@@ -1,4 +1,3 @@
-/* Tailwind config for the frontend react app. This is where the app theme should be defined: https://v2.tailwindcss.com/docs/configuration. */
 import type { Config } from 'tailwindcss'
 import animatePlugin from 'tailwindcss-animate'
 import typographyPlugin from '@tailwindcss/typography'
@@ -27,8 +26,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter var', 'SF Pro Display', 'system-ui', 'sans-serif'],
-        display: ['SF Pro Display', 'Inter var', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -75,6 +74,8 @@ export default {
           ring: 'hsl(var(--sidebar-ring))',
         },
         chart: {
+          income: 'hsl(var(--chart-income))',
+          expense: 'hsl(var(--chart-expense))',
           1: 'hsl(var(--chart-1))',
           2: 'hsl(var(--chart-2))',
           3: 'hsl(var(--chart-3))',

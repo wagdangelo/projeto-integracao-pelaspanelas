@@ -1,0 +1,592 @@
+{
+  "generatedAt": "2026-04-08T10:59:36.017Z",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "apiRules": {
+        "list": "id = @request.auth.id || @request.auth.role = 'Admin'",
+        "view": "id = @request.auth.id || @request.auth.role = 'Admin'",
+        "create": "",
+        "update": "id = @request.auth.id || @request.auth.role = 'Admin'",
+        "delete": "@request.auth.role = 'Admin'"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avatar",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Admin", "Gerente", "Colaborador"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "banks",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "update": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "delete": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "account_number",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "bank_code",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "agency",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "account_digit",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "initial_balance",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "current_balance",
+          "type": "number",
+          "required": true,
+          "system": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "payment_methods",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "transaction_categories",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "transaction_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["entrada", "saída"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "transactions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["entrada", "saída"]
+        },
+        {
+          "name": "launch_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "bank",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "banks"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "payment_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "payment_method",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "payment_methods"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Liquidado", "À Vencer", "Atrasado"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "payee",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "account_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "chart_of_accounts"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "clients",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "view": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "create": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "update": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "delete": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Pessoa Física", "Pessoa Jurídica"]
+        },
+        {
+          "name": "tax_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_street",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_complement",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_city",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_state",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_zip_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "registration_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "birth_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "gender",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Masculino", "Feminino", "Outro"]
+        },
+        {
+          "name": "favorecido_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Clientes",
+            "Fornecedores",
+            "Colaboradores",
+            "Prestadores de Serviço",
+            "Bancos",
+            "Transf. Entre Contas"
+          ]
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "chart_of_accounts",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "view": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "create": "@request.auth.role = 'Admin'",
+        "update": "@request.auth.role = 'Admin'",
+        "delete": "@request.auth.role = 'Admin'"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Receita", "Despesa"]
+        },
+        {
+          "name": "group",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "groups",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'Admin'",
+        "view": "@request.auth.role = 'Admin'",
+        "create": "@request.auth.role = 'Admin'",
+        "update": "@request.auth.role = 'Admin'",
+        "delete": "@request.auth.role = 'Admin'"
+      },
+      "fields": [
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "entregas_lojas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'",
+        "delete": "@request.auth.role = 'Admin' || @request.auth.role = 'Gerente'"
+      },
+      "fields": [
+        {
+          "name": "data",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "turno",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Dia", "Noite"]
+        },
+        {
+          "name": "loja",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Pelas Panelas Delivery",
+            "Pelas Panelas App",
+            "Feijoada do Pelas",
+            "Feijocas Ifood",
+            "Feijocas 99Food",
+            "Feijocas Keeta",
+            "Balcão"
+          ]
+        },
+        {
+          "name": "quantidade",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "faturamento",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    }
+  ]
+}
