@@ -1,6 +1,7 @@
 {
   "_versions": {
     "parse-ofx": 2,
-    "sync-ifood-orders": 1
+    "sync-ifood-orders": 1,
+    "ifoodWebhook": 1
   }
 }
