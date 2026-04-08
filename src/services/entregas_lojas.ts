@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface EntregaLoja {
   id: string
@@ -13,19 +13,42 @@ export interface EntregaLoja {
 }
 
 export const getEntregasLojas = async () => {
-  return pb.collection('entregas_lojas').getFullList<EntregaLoja>({
-    sort: '-data,-created',
-  })
+  const { data, error } = await supabase
+    .from('entregas_lojas')
+    .select('*')
+    .order('data', { ascending: false })
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.map((e: any) => ({
+    ...e,
+    created: e.created_at,
+    updated: e.updated_at,
+  })) as EntregaLoja[]
 }
 
 export const createEntregaLoja = async (data: Partial<EntregaLoja>) => {
-  return pb.collection('entregas_lojas').create<EntregaLoja>(data)
+  const { data: record, error } = await supabase
+    .from('entregas_lojas')
+    .insert([data])
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as EntregaLoja
 }
 
 export const updateEntregaLoja = async (id: string, data: Partial<EntregaLoja>) => {
-  return pb.collection('entregas_lojas').update<EntregaLoja>(id, data)
+  const { data: record, error } = await supabase
+    .from('entregas_lojas')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as EntregaLoja
 }
 
 export const deleteEntregaLoja = async (id: string) => {
-  return pb.collection('entregas_lojas').delete(id)
+  const { error } = await supabase.from('entregas_lojas').delete().eq('id', id)
+  if (error) throw error
+  return true
 }

@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface PaymentMethod {
   id: string
@@ -7,13 +7,39 @@ export interface PaymentMethod {
   updated: string
 }
 
-export const getPaymentMethods = () =>
-  pb.collection('payment_methods').getFullList<PaymentMethod>({ sort: 'name' })
+export const getPaymentMethods = async () => {
+  const { data, error } = await supabase.from('payment_methods').select('*').order('name')
+  if (error) throw error
+  return data.map((p: any) => ({
+    ...p,
+    created: p.created_at,
+    updated: p.updated_at,
+  })) as PaymentMethod[]
+}
 
-export const createPaymentMethod = (data: Partial<PaymentMethod>) =>
-  pb.collection('payment_methods').create<PaymentMethod>(data)
+export const createPaymentMethod = async (data: Partial<PaymentMethod>) => {
+  const { data: record, error } = await supabase
+    .from('payment_methods')
+    .insert([data])
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as PaymentMethod
+}
 
-export const updatePaymentMethod = (id: string, data: Partial<PaymentMethod>) =>
-  pb.collection('payment_methods').update<PaymentMethod>(id, data)
+export const updatePaymentMethod = async (id: string, data: Partial<PaymentMethod>) => {
+  const { data: record, error } = await supabase
+    .from('payment_methods')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as PaymentMethod
+}
 
-export const deletePaymentMethod = (id: string) => pb.collection('payment_methods').delete(id)
+export const deletePaymentMethod = async (id: string) => {
+  const { error } = await supabase.from('payment_methods').delete().eq('id', id)
+  if (error) throw error
+  return true
+}

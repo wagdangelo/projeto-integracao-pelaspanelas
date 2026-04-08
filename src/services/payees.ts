@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface PayeeData {
   id: string
@@ -8,6 +8,8 @@ export interface PayeeData {
   phone?: string
 }
 
-export const getPayees = () => {
-  return pb.collection('payees').getFullList<PayeeData>({ sort: 'name' })
+export const getPayees = async () => {
+  const { data, error } = await supabase.from('payees').select('*').order('name')
+  if (error) throw error
+  return data as PayeeData[]
 }

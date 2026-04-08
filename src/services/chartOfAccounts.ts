@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export type AccountType = 'Receita' | 'Despesa'
 
@@ -12,13 +12,39 @@ export interface ChartOfAccount {
   updated: string
 }
 
-export const getAccounts = () =>
-  pb.collection('chart_of_accounts').getFullList<ChartOfAccount>({ sort: 'name' })
+export const getAccounts = async () => {
+  const { data, error } = await supabase.from('chart_of_accounts').select('*').order('name')
+  if (error) throw error
+  return data.map((a: any) => ({
+    ...a,
+    created: a.created_at,
+    updated: a.updated_at,
+  })) as ChartOfAccount[]
+}
 
-export const createAccount = (data: Partial<ChartOfAccount>) =>
-  pb.collection('chart_of_accounts').create<ChartOfAccount>(data)
+export const createAccount = async (data: Partial<ChartOfAccount>) => {
+  const { data: record, error } = await supabase
+    .from('chart_of_accounts')
+    .insert([data])
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as ChartOfAccount
+}
 
-export const updateAccount = (id: string, data: Partial<ChartOfAccount>) =>
-  pb.collection('chart_of_accounts').update<ChartOfAccount>(id, data)
+export const updateAccount = async (id: string, data: Partial<ChartOfAccount>) => {
+  const { data: record, error } = await supabase
+    .from('chart_of_accounts')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as ChartOfAccount
+}
 
-export const deleteAccount = (id: string) => pb.collection('chart_of_accounts').delete(id)
+export const deleteAccount = async (id: string) => {
+  const { error } = await supabase.from('chart_of_accounts').delete().eq('id', id)
+  if (error) throw error
+  return true
+}

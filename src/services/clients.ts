@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface Client {
   id: string
@@ -22,24 +22,41 @@ export interface Client {
   updated: string
 }
 
-export const getClients = async (filter?: string) => {
-  const records = await pb.collection('clients').getFullList({
-    sort: '-created',
-    filter,
-  })
-  return records as unknown as Client[]
+export const getClients = async (filterStr?: string) => {
+  let query = supabase.from('clients').select('*').order('created_at', { ascending: false })
+
+  // Basic translation of common PocketBase filters if necessary
+  if (filterStr) {
+    if (filterStr.includes('type =')) {
+      const match = filterStr.match(/type\s*=\s*['"]([^'"]+)['"]/)
+      if (match) query = query.eq('type', match[1])
+    }
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data.map((c: any) => ({ ...c, created: c.created_at, updated: c.updated_at })) as Client[]
 }
 
 export const createClient = async (data: Partial<Client>) => {
-  const record = await pb.collection('clients').create(data)
-  return record as unknown as Client
+  const { data: record, error } = await supabase.from('clients').insert([data]).select().single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as Client
 }
 
 export const updateClient = async (id: string, data: Partial<Client>) => {
-  const record = await pb.collection('clients').update(id, data)
-  return record as unknown as Client
+  const { data: record, error } = await supabase
+    .from('clients')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return { ...record, created: record.created_at, updated: record.updated_at } as Client
 }
 
 export const deleteClient = async (id: string) => {
-  await pb.collection('clients').delete(id)
+  const { error } = await supabase.from('clients').delete().eq('id', id)
+  if (error) throw error
+  return true
 }

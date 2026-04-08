@@ -1,10 +1,12 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface PaymentMethodData {
   id: string
   name: string
 }
 
-export const getPaymentMethods = () => {
-  return pb.collection('payment_methods').getFullList<PaymentMethodData>({ sort: 'name' })
+export const getPaymentMethods = async () => {
+  const { data, error } = await supabase.from('payment_methods').select('*').order('name')
+  if (error) throw error
+  return data as PaymentMethodData[]
 }

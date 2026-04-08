@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 
 export interface ParsedTransaction {
   fitid: string
@@ -17,9 +17,13 @@ export interface ParseOfxResponse {
 }
 
 export const parseOfxFile = async (ofxContent: string): Promise<ParseOfxResponse> => {
-  return pb.send<ParseOfxResponse>('/backend/v1/parse-ofx', {
-    method: 'POST',
-    body: JSON.stringify({ ofxContent }),
-    headers: { 'Content-Type': 'application/json' },
+  const { data, error } = await supabase.functions.invoke<ParseOfxResponse>('parse-ofx', {
+    body: { ofxContent },
   })
+
+  if (error) {
+    throw error
+  }
+
+  return data
 }
