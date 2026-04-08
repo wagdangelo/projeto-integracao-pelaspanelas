@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
   Zap,
   Utensils,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { differenceInMinutes, parseISO, format } from 'date-fns'
@@ -57,6 +59,7 @@ export default function Orders() {
   const [filterMkp, setFilterMkp] = useState<string>('all')
   const [filterDate, setFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [, setTick] = useState(0)
+  const [syncing, setSyncing] = useState(false)
   const { toast } = useToast()
 
   const fetchOrders = useCallback(async () => {
@@ -78,6 +81,29 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders()
   }, [fetchOrders])
+
+  const handleSyncIfood = async () => {
+    try {
+      setSyncing(true)
+      const res = await ordersService.syncIfoodOrders()
+      toast({
+        title: 'Sincronização concluída',
+        description: `${res?.synced || 0} pedidos sincronizados. ${res?.message ? `(${res.message})` : ''}`,
+      })
+      if (res?.errors && res.errors.length > 0) {
+        console.error('Erros na sincronização:', res.errors)
+      }
+      fetchOrders()
+    } catch (error) {
+      toast({
+        title: 'Erro na sincronização',
+        description: 'Não foi possível sincronizar com o iFood.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   useRealtime('orders', (payload) => {
     if (payload.action === 'create') {
@@ -153,6 +179,16 @@ export default function Orders() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncIfood}
+            disabled={syncing}
+            className="hidden sm:flex"
+          >
+            <RefreshCw className={cn('w-4 h-4 mr-2', syncing && 'animate-spin')} />
+            Sincronizar iFood
+          </Button>
           <Select value={filterMkp} onValueChange={setFilterMkp}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Marketplace" />

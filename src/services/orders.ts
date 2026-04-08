@@ -17,6 +17,14 @@ export type Order = {
 }
 
 export const ordersService = {
+  async syncIfoodOrders() {
+    const { data, error } = await supabase.functions.invoke('sync-ifood-orders', {
+      method: 'POST',
+    })
+    if (error) throw error
+    return data
+  },
+
   async getOrders() {
     const { data, error } = await supabase
       .from('orders')
