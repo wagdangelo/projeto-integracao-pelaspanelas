@@ -1,5 +1,6 @@
 {
   "_versions": {
-    "parse-ofx": 2
+    "parse-ofx": 2,
+    "sync-ifood-orders": 1
   }
 }
