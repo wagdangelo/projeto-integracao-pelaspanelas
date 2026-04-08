@@ -27,6 +27,7 @@ import { differenceInMinutes, parseISO, format } from 'date-fns'
 import { ordersService, type Order } from '@/services/orders'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from '@/hooks/use-auth'
 
 type OrderStatus = 'Cozinha' | 'Pedido Pronto' | 'Saiu Para Entrega' | 'Entregue'
 
@@ -61,6 +62,9 @@ export default function Orders() {
   const [, setTick] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
+
+  const isManagerOrAdmin = (user as any)?.role === 'Admin' || (user as any)?.role === 'Gerente'
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -179,16 +183,18 @@ export default function Orders() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncIfood}
-            disabled={syncing}
-            className="hidden sm:flex"
-          >
-            <RefreshCw className={cn('w-4 h-4 mr-2', syncing && 'animate-spin')} />
-            Sincronizar iFood
-          </Button>
+          {isManagerOrAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncIfood}
+              disabled={syncing}
+              className="hidden sm:flex"
+            >
+              <RefreshCw className={cn('w-4 h-4 mr-2', syncing && 'animate-spin')} />
+              Sincronizar Pedidos do iFood
+            </Button>
+          )}
           <Select value={filterMkp} onValueChange={setFilterMkp}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Marketplace" />
