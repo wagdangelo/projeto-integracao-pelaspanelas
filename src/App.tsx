@@ -19,6 +19,7 @@ import Clients from './pages/admin/Clients'
 import AccountsPayable from './pages/AccountsPayable'
 import AccountsReceivable from './pages/AccountsReceivable'
 import UsersAdmin from './pages/admin/Users'
+import Orders from './pages/Orders'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
@@ -54,6 +55,7 @@ const App = () => (
               />
               <Route path="/transacoes" element={<Transactions />} />
               <Route path="/faturamento" element={<Billing />} />
+              <Route path="/pedidos" element={<Orders />} />
               <Route path="/contas-a-pagar" element={<AccountsPayable />} />
               <Route path="/contas-a-receber" element={<AccountsReceivable />} />
               <Route

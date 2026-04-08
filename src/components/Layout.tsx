@@ -55,6 +55,7 @@ export default function Layout() {
     { icon: Receipt, label: 'Contas a Pagar', path: '/contas-a-pagar' },
     { icon: HandCoins, label: 'Contas a Receber', path: '/contas-a-receber' },
     { icon: Store, label: 'Faturamento', path: '/faturamento' },
+    { icon: Truck, label: 'Pedidos', path: '/pedidos' },
     { icon: Activity, label: 'Fluxo de caixa', path: '/fluxo-caixa', showFor: ['Admin'] },
     { icon: Users, label: 'Favorecidos', path: '/favorecidos', showFor: ['Admin', 'Gerente'] },
     { icon: Building2, label: 'Bancos', path: '/admin/bancos', showFor: ['Admin', 'Gerente'] },
