@@ -1,16 +1,14 @@
 import { useEffect, useRef } from 'react'
-import pb from '@/lib/pocketbase/client'
-import type { RecordSubscription } from 'pocketbase'
+import { supabase } from '@/lib/supabase/client'
 
 /**
- * Hook for real-time subscriptions to a PocketBase collection.
- * ALWAYS use this hook instead of subscribing inline.
- * Uses the per-listener UnsubscribeFunc so multiple components
- * can safely subscribe to the same collection without conflicts.
+ * Hook for real-time subscriptions using Supabase Realtime.
+ * Adapted to emit PocketBase-like events to maintain compatibility
+ * with existing dashboard components.
  */
 export function useRealtime(
   collectionName: string,
-  callback: (data: RecordSubscription<any>) => void,
+  callback: (payload: any) => void,
   enabled: boolean = true,
 ) {
   const callbackRef = useRef(callback)
@@ -19,26 +17,41 @@ export function useRealtime(
   useEffect(() => {
     if (!enabled) return
 
-    let unsubscribeFn: (() => Promise<void>) | undefined
-    let cancelled = false
+    const channel = supabase
+      .channel(`public:${collectionName}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: collectionName,
+        },
+        (payload) => {
+          const actionMap: Record<string, string> = {
+            INSERT: 'create',
+            UPDATE: 'update',
+            DELETE: 'delete',
+          }
 
-    pb.collection(collectionName)
-      .subscribe('*', (e) => {
-        callbackRef.current(e)
-      })
-      .then((fn) => {
-        if (cancelled) {
-          fn().catch(() => {})
-        } else {
-          unsubscribeFn = fn
-        }
-      })
+          const record = payload.eventType === 'DELETE' ? payload.old : payload.new
+
+          // Map to format expected by existing PB-based components:
+          // { action: 'create'|'update'|'delete', record: { ... } }
+          callbackRef.current({
+            action: actionMap[payload.eventType] || payload.eventType.toLowerCase(),
+            record: {
+              ...record,
+              created: record?.created_at,
+              updated: record?.updated_at,
+            },
+            originalPayload: payload,
+          })
+        },
+      )
+      .subscribe()
 
     return () => {
-      cancelled = true
-      if (unsubscribeFn) {
-        unsubscribeFn().catch(() => {})
-      }
+      supabase.removeChannel(channel)
     }
   }, [collectionName, enabled])
 }

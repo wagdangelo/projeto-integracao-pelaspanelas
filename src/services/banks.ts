@@ -8,6 +8,7 @@ export interface Bank {
   agency: string
   account_digit: string
   initial_balance: number
+  current_balance?: number
   created: string
   updated: string
 }
