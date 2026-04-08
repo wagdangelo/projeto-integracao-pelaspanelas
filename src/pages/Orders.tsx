@@ -23,8 +23,8 @@ import {
 import { cn } from '@/lib/utils'
 import { differenceInMinutes, parseISO, format } from 'date-fns'
 import { ordersService, type Order } from '@/services/orders'
-import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import { useRealtime } from '@/hooks/use-realtime'
 
 type OrderStatus = 'Cozinha' | 'Pedido Pronto' | 'Saiu Para Entrega' | 'Entregue'
 
@@ -77,18 +77,19 @@ export default function Orders() {
 
   useEffect(() => {
     fetchOrders()
-
-    const channel = supabase
-      .channel('public:orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchOrders()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
   }, [fetchOrders])
+
+  useRealtime('orders', (payload) => {
+    if (payload.action === 'create') {
+      setOrders((prev) => [payload.record as Order, ...prev])
+    } else if (payload.action === 'update') {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === payload.record.id ? (payload.record as Order) : o)),
+      )
+    } else if (payload.action === 'delete') {
+      setOrders((prev) => prev.filter((o) => o.id !== payload.record.id))
+    }
+  })
 
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 60000)

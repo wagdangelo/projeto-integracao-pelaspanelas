@@ -204,6 +204,54 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          created_at: string
+          customer_address: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          marketplace: string
+          order_date: string
+          order_number: string
+          payment_status: string
+          status: string
+          total_value: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_address?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          marketplace: string
+          order_date?: string
+          order_number: string
+          payment_status?: string
+          status?: string
+          total_value?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_address?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          marketplace?: string
+          order_date?: string
+          order_number?: string
+          payment_status?: string
+          status?: string
+          total_value?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payees: {
         Row: {
           created_at: string | null
@@ -591,6 +639,20 @@ export const Constants = {
 //   user_id: uuid (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: orders
+//   id: uuid (not null, default: gen_random_uuid())
+//   order_number: text (not null)
+//   customer_name: text (not null)
+//   customer_phone: text (nullable)
+//   customer_address: text (nullable)
+//   marketplace: text (not null)
+//   order_date: timestamp with time zone (not null, default: now())
+//   total_value: numeric (not null, default: 0)
+//   payment_status: text (not null, default: 'Pendente'::text)
+//   status: text (not null, default: 'Cozinha'::text)
+//   user_id: uuid (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: payees
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -647,6 +709,9 @@ export const Constants = {
 // Table: entregas_lojas
 //   PRIMARY KEY entregas_lojas_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY entregas_lojas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+// Table: orders
+//   PRIMARY KEY orders_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY orders_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
 // Table: payees
 //   PRIMARY KEY payees_pkey: PRIMARY KEY (id)
 // Table: payment_methods
@@ -685,6 +750,16 @@ export const Constants = {
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: orders
+//   Policy "Admin and Gerente can delete all, Colaborador deletes own" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//   Policy "Admin and Gerente can insert all, Colaborador inserts own" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//   Policy "Admin and Gerente can see all, Colaborador sees own" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//   Policy "Admin and Gerente can update all, Colaborador updates own" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//     WITH CHECK: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
 // Table: payees
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -738,3 +813,18 @@ export const Constants = {
 //   END;
 //   $function$
 //
+// FUNCTION update_orders_updated_at()
+//   CREATE OR REPLACE FUNCTION public.update_orders_updated_at()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     NEW.updated_at = NOW();
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+
+// --- TRIGGERS ---
+// Table: orders
+//   update_orders_updated_at_trigger: CREATE TRIGGER update_orders_updated_at_trigger BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION update_orders_updated_at()
