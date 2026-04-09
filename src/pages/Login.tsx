@@ -54,7 +54,7 @@ export default function Login() {
               <WalletCards className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Entrar no VAST</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Pelas Panelas ERP</CardTitle>
           <CardDescription>Gerencie suas finanças com segurança.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
