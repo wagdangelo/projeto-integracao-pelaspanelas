@@ -829,6 +829,8 @@ export const Constants = {
 // Table: entregas_lojas
 //   PRIMARY KEY entregas_lojas_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY entregas_lojas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+// Table: funcionarios
+//   UNIQUE funcionarios_email_key: UNIQUE (email)
 // Table: orders
 //   PRIMARY KEY orders_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY orders_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
@@ -870,6 +872,16 @@ export const Constants = {
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: funcionarios
+//   Policy "authenticated_delete_funcionarios" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_insert_funcionarios" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "authenticated_select_funcionarios" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_funcionarios" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: orders
 //   Policy "Admin and Gerente can delete all, Colaborador deletes own" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
@@ -888,6 +900,16 @@ export const Constants = {
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: pontos
+//   Policy "authenticated_delete_pontos" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_insert_pontos" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "authenticated_select_pontos" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_pontos" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: profiles
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -900,14 +922,6 @@ export const Constants = {
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
-
-// --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
-// These tables have Row Level Security enabled but NO policies defined.
-// This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
-// for non-superuser roles (including the anon and authenticated roles used by the app).
-// You MUST create RLS policies for these tables to allow data access.
-//   - funcionarios
-//   - pontos
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION rls_auto_enable()
@@ -956,3 +970,7 @@ export const Constants = {
 // --- TRIGGERS ---
 // Table: orders
 //   update_orders_updated_at_trigger: CREATE TRIGGER update_orders_updated_at_trigger BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION update_orders_updated_at()
+
+// --- INDEXES ---
+// Table: funcionarios
+//   CREATE UNIQUE INDEX funcionarios_email_key ON public.funcionarios USING btree (email)

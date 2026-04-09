@@ -44,6 +44,48 @@ export default function Ponto() {
   }, [])
 
   const startProcess = () => {
+    if (user?.turno) {
+      const timeMatch = user.turno.match(/(\d{2}):(\d{2})/)
+      if (timeMatch) {
+        const [_, hourStr, minuteStr] = timeMatch
+        const escalaHour = parseInt(hourStr, 10)
+        const escalaMinute = parseInt(minuteStr, 10)
+
+        const now = new Date()
+        const currentHour = now.getHours()
+        const currentMinute = now.getMinutes()
+        const currentTotalMinutes = currentHour * 60 + currentMinute
+        let escalaTotalMinutes = escalaHour * 60 + escalaMinute
+
+        if (
+          escalaTotalMinutes < currentTotalMinutes &&
+          currentTotalMinutes - escalaTotalMinutes > 12 * 60
+        ) {
+          escalaTotalMinutes += 24 * 60
+        }
+
+        const minTotalMinutes = escalaTotalMinutes - 20
+
+        if (currentTotalMinutes < minTotalMinutes || currentTotalMinutes > escalaTotalMinutes) {
+          const formatTime = (totalMins: number) => {
+            const normalizedMins = totalMins >= 24 * 60 ? totalMins - 24 * 60 : totalMins
+            const h = Math.floor(normalizedMins / 60)
+              .toString()
+              .padStart(2, '0')
+            const m = (normalizedMins % 60).toString().padStart(2, '0')
+            return `${h}:${m}`
+          }
+
+          toast({
+            title: 'Fora do horário',
+            description: `Você só pode bater ponto entre ${formatTime(minTotalMinutes)} e ${formatTime(escalaTotalMinutes)}`,
+            variant: 'destructive',
+          })
+          return
+        }
+      }
+    }
+
     setStatus('locating')
 
     if (!navigator.geolocation) {

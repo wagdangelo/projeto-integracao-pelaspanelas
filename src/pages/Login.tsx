@@ -68,7 +68,9 @@ export default function Login() {
         title: 'Bem-vindo de volta!',
         description: 'Login realizado com sucesso.',
       })
-      navigate('/ponto')
+      setTimeout(() => {
+        navigate('/ponto')
+      }, 0)
     }
   }
 
@@ -118,7 +120,9 @@ export default function Login() {
       const { error: signInError } = await signIn(email, newPassword)
       if (signInError) throw signInError
 
-      navigate('/ponto')
+      setTimeout(() => {
+        navigate('/ponto')
+      }, 0)
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     } finally {
