@@ -17,6 +17,7 @@ import {
   HandCoins,
   UserCog,
   Store,
+  Clock,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -48,24 +49,73 @@ export default function Layout() {
     navigate('/login')
   }
 
-  const role = user?.role || 'Colaborador'
+  const role = user?.role || 'Cozinha'
   const allNavItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/', hideFor: ['Gerente'] },
-    { icon: ArrowRightLeft, label: 'Transações', path: '/transacoes' },
-    { icon: Receipt, label: 'Contas a Pagar', path: '/contas-a-pagar' },
-    { icon: HandCoins, label: 'Contas a Receber', path: '/contas-a-receber' },
-    { icon: Store, label: 'Faturamento', path: '/faturamento' },
-    { icon: Truck, label: 'Pedidos', path: '/pedidos' },
-    { icon: Activity, label: 'Fluxo de caixa', path: '/fluxo-caixa', showFor: ['Admin'] },
-    { icon: Users, label: 'Favorecidos', path: '/favorecidos', showFor: ['Admin', 'Gerente'] },
-    { icon: Building2, label: 'Bancos', path: '/admin/bancos', showFor: ['Admin', 'Gerente'] },
-    { icon: PieChart, label: 'Relatórios', path: '/relatorios' },
-    { icon: BookOpen, label: 'Plano de Contas', path: '/admin/plano-contas', showFor: ['Admin'] },
-    { icon: UserCog, label: 'Gestão de Usuários', path: '/admin/usuarios', showFor: ['Admin'] },
+    {
+      icon: Clock,
+      label: 'Ponto',
+      path: '/ponto',
+      showFor: ['Admin', 'Adm', 'Gerente', 'Cozinha', 'RH'],
+    },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/', showFor: ['Admin', 'Adm', 'Gerente'] },
+    {
+      icon: ArrowRightLeft,
+      label: 'Transações',
+      path: '/transacoes',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: Receipt,
+      label: 'Contas a Pagar',
+      path: '/contas-a-pagar',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: HandCoins,
+      label: 'Contas a Receber',
+      path: '/contas-a-receber',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: Store,
+      label: 'Faturamento',
+      path: '/faturamento',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    { icon: Truck, label: 'Pedidos', path: '/pedidos', showFor: ['Admin', 'Adm', 'Gerente'] },
+    { icon: Activity, label: 'Fluxo de caixa', path: '/fluxo-caixa', showFor: ['Admin', 'Adm'] },
+    {
+      icon: Users,
+      label: 'Favorecidos',
+      path: '/favorecidos',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: Building2,
+      label: 'Bancos',
+      path: '/admin/bancos',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: PieChart,
+      label: 'Relatórios',
+      path: '/relatorios',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+    {
+      icon: BookOpen,
+      label: 'Plano de Contas',
+      path: '/admin/plano-contas',
+      showFor: ['Admin', 'Adm'],
+    },
+    {
+      icon: UserCog,
+      label: 'RH / Funcionários',
+      path: '/admin/usuarios',
+      showFor: ['Admin', 'Adm', 'Gerente', 'RH'],
+    },
   ].filter((item) => {
-    if (item.hideFor && item.hideFor.includes(role)) return false
-    if (item.showFor && !item.showFor.includes(role)) return false
-    return true
+    return item.showFor.includes(role)
   })
 
   return (
@@ -185,13 +235,15 @@ export default function Layout() {
               <div className="h-6 w-px bg-border hidden sm:block mx-1" />
 
               {/* Mobile primary action */}
-              <Button
-                onClick={() => setIsTransactionModalOpen(true)}
-                size="icon"
-                className="sm:hidden rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              {['Admin', 'Adm', 'Gerente'].includes(role) && (
+                <Button
+                  onClick={() => setIsTransactionModalOpen(true)}
+                  size="icon"
+                  className="sm:hidden rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              )}
             </div>
           </header>
 

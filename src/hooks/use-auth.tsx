@@ -48,24 +48,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (session?.user) {
       supabase
-        .from('profiles')
+        .from('funcionarios')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('email', session.user.email)
         .single()
         .then(({ data }) => {
           if (data) {
-            setUser({ ...session.user, ...data })
+            setUser({ ...session.user, ...data, role: data.role || 'Cozinha' })
           } else {
-            setUser(session.user)
+            setUser({ ...session.user, role: 'Cozinha' })
           }
           setLoading(false)
         })
         .catch(() => {
-          setUser(session.user)
+          setUser({ ...session.user, role: 'Cozinha' })
           setLoading(false)
         })
     }
-  }, [session?.user?.id])
+  }, [session?.user?.id, session?.user?.email])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

@@ -35,12 +35,12 @@ Deno.serve(async (req: Request) => {
 
     // Check if the caller is an Admin
     const { data: profile } = await supabaseAdmin
-      .from('profiles')
+      .from('funcionarios')
       .select('role')
-      .eq('id', user.id)
+      .eq('email', user.email)
       .single()
 
-    if (profile?.role !== 'Admin') {
+    if (profile?.role !== 'Admin' && profile?.role !== 'Adm') {
       throw new Error('Acesso negado: Apenas administradores podem gerenciar usuários.')
     }
 
@@ -60,34 +60,34 @@ Deno.serve(async (req: Request) => {
         })
         if (createError) throw createError
 
-        // Upsert into public.profiles
+        // Upsert into public.funcionarios
         const { data: profileData, error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .upsert({ id: authData.user.id, name, email, role: role || 'Colaborador' })
+          .from('funcionarios')
+          .upsert({ email, nome: name, role: role || 'Cozinha' }, { onConflict: 'email' })
           .select()
           .single()
 
         if (profileError) throw profileError
-        result = profileData
+        result = { ...profileData, name: profileData.nome }
         break
       }
       case 'read': {
         const { id } = payload || {}
         if (id) {
           const { data, error } = await supabaseAdmin
-            .from('profiles')
+            .from('funcionarios')
             .select('*')
             .eq('id', id)
             .single()
           if (error) throw error
-          result = data
+          result = { ...data, name: data.nome }
         } else {
           const { data, error } = await supabaseAdmin
-            .from('profiles')
+            .from('funcionarios')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('nome', { ascending: true })
           if (error) throw error
-          result = data
+          result = data.map((item: any) => ({ ...item, name: item.nome }))
         }
         break
       }
@@ -107,22 +107,40 @@ Deno.serve(async (req: Request) => {
           if (updateAuthError) throw updateAuthError
         }
 
-        // Update public.profiles
+        // Update public.funcionarios
+        const updateDataFunc: any = {}
+        if (name) updateDataFunc.nome = name
+        if (email) updateDataFunc.email = email
+        if (role) updateDataFunc.role = role
+
         const { data, error } = await supabaseAdmin
-          .from('profiles')
-          .update(updateData)
+          .from('funcionarios')
+          .update(updateDataFunc)
           .eq('id', id)
           .select()
           .single()
 
         if (error) throw error
-        result = data
+        result = { ...data, name: data.nome }
         break
       }
       case 'delete': {
         const { id } = payload
-        // Deleting from auth.users cascades to public.profiles due to foreign key constraints
-        const { error } = await supabaseAdmin.auth.admin.deleteUser(id)
+
+        const { data: funcData } = await supabaseAdmin
+          .from('funcionarios')
+          .select('email')
+          .eq('id', id)
+          .single()
+        if (funcData?.email) {
+          const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+          const authUser = users.users.find((u) => u.email === funcData.email)
+          if (authUser) {
+            await supabaseAdmin.auth.admin.deleteUser(authUser.id)
+          }
+        }
+
+        const { error } = await supabaseAdmin.from('funcionarios').delete().eq('id', id)
         if (error) throw error
         result = { deletedId: id }
         break

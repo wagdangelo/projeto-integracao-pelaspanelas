@@ -204,6 +204,63 @@ export type Database = {
         }
         Relationships: []
       }
+      funcionarios: {
+        Row: {
+          cargo: string | null
+          cpf: string | null
+          criado_em: string | null
+          data_admissao: string | null
+          data_nascimento: string | null
+          email: string | null
+          endereco: string | null
+          escala_turnos: Json | null
+          foto_url: string | null
+          id: string | null
+          nome: string | null
+          role: string | null
+          salario: string | null
+          telefone: string | null
+          turno: string | null
+          vale_transporte: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          cpf?: string | null
+          criado_em?: string | null
+          data_admissao?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          escala_turnos?: Json | null
+          foto_url?: string | null
+          id?: string | null
+          nome?: string | null
+          role?: string | null
+          salario?: string | null
+          telefone?: string | null
+          turno?: string | null
+          vale_transporte?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          cpf?: string | null
+          criado_em?: string | null
+          data_admissao?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          escala_turnos?: Json | null
+          foto_url?: string | null
+          id?: string | null
+          nome?: string | null
+          role?: string | null
+          salario?: string | null
+          telefone?: string | null
+          turno?: string | null
+          vale_transporte?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -300,6 +357,42 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pontos: {
+        Row: {
+          criado_em: string | null
+          data_hora: string | null
+          foto_url: string | null
+          funcionario_id: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          tipo_ponto: string | null
+          wifi_conectado: boolean | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data_hora?: string | null
+          foto_url?: string | null
+          funcionario_id?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          tipo_ponto?: string | null
+          wifi_conectado?: boolean | null
+        }
+        Update: {
+          criado_em?: string | null
+          data_hora?: string | null
+          foto_url?: string | null
+          funcionario_id?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          tipo_ponto?: string | null
+          wifi_conectado?: boolean | null
         }
         Relationships: []
       }
@@ -639,6 +732,23 @@ export const Constants = {
 //   user_id: uuid (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: funcionarios
+//   id: text (nullable)
+//   nome: text (nullable)
+//   email: text (nullable)
+//   criado_em: timestamp with time zone (nullable)
+//   cpf: text (nullable)
+//   telefone: text (nullable)
+//   endereco: text (nullable)
+//   cargo: text (nullable)
+//   turno: text (nullable)
+//   data_admissao: text (nullable)
+//   foto_url: text (nullable)
+//   role: text (nullable)
+//   data_nascimento: text (nullable)
+//   salario: text (nullable)
+//   vale_transporte: text (nullable)
+//   escala_turnos: jsonb (nullable)
 // Table: orders
 //   id: uuid (not null, default: gen_random_uuid())
 //   order_number: text (not null)
@@ -666,6 +776,16 @@ export const Constants = {
 //   name: text (not null)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: pontos
+//   id: text (nullable)
+//   funcionario_id: text (nullable)
+//   tipo_ponto: text (nullable)
+//   data_hora: timestamp with time zone (nullable)
+//   latitude: double precision (nullable)
+//   longitude: double precision (nullable)
+//   foto_url: text (nullable)
+//   wifi_conectado: boolean (nullable)
+//   criado_em: timestamp with time zone (nullable)
 // Table: profiles
 //   id: uuid (not null)
 //   email: text (not null)
@@ -780,6 +900,14 @@ export const Constants = {
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+
+// --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
+// These tables have Row Level Security enabled but NO policies defined.
+// This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
+// for non-superuser roles (including the anon and authenticated roles used by the app).
+// You MUST create RLS policies for these tables to allow data access.
+//   - funcionarios
+//   - pontos
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION rls_auto_enable()

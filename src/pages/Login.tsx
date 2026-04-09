@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import { WalletCards, Eye, EyeOff } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase/client'
 
 export default function Login() {
@@ -34,6 +35,7 @@ export default function Login() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isCreatingPassword, setIsCreatingPassword] = useState(false)
+  const [keepLoggedIn, setKeepLoggedIn] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -66,7 +68,7 @@ export default function Login() {
         title: 'Bem-vindo de volta!',
         description: 'Login realizado com sucesso.',
       })
-      navigate('/')
+      navigate('/ponto')
     }
   }
 
@@ -116,7 +118,7 @@ export default function Login() {
       const { error: signInError } = await signIn(email, newPassword)
       if (signInError) throw signInError
 
-      navigate('/')
+      navigate('/ponto')
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     } finally {
@@ -160,6 +162,20 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-background/50 border-white/10"
               />
+            </div>
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="keepLoggedIn"
+                checked={keepLoggedIn}
+                onCheckedChange={(checked) => setKeepLoggedIn(checked as boolean)}
+                className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+              />
+              <Label
+                htmlFor="keepLoggedIn"
+                className="text-sm font-medium leading-none text-white/80 cursor-pointer"
+              >
+                Manter logado por 8 horas
+              </Label>
             </div>
           </CardContent>
           <CardFooter className="pb-8 pt-4 flex-col gap-4">

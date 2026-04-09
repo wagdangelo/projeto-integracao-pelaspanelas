@@ -25,19 +25,20 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    // Fetch user id from profiles table based on email
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .single()
+    // Update password in Supabase Auth (Supabase automatically applies bcrypt/argon2 hashing)
+    // First find the user in auth.users by email
+    const {
+      data: { users },
+      error: listError,
+    } = await supabaseAdmin.auth.admin.listUsers()
+    if (listError) throw listError
 
-    if (profileError || !profile) {
-      throw new Error('Usuário não encontrado na base de dados.')
+    const user = users.find((u) => u.email === email)
+    if (!user) {
+      throw new Error('Usuário não encontrado na base de dados de autenticação.')
     }
 
-    // Update password in Supabase Auth (Supabase automatically applies bcrypt/argon2 hashing)
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
       password: password,
     })
 

@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
+import Ponto from './pages/Ponto'
 import Transactions from './pages/Transactions'
 import Billing from './pages/Billing'
 import Layout from './components/Layout'
@@ -25,7 +26,20 @@ import { ThemeProvider } from './contexts/ThemeContext'
 const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth()
   if (loading) return null
-  if (user?.role === 'Gerente') return <Navigate to="/transacoes" replace />
+  if (['Cozinha', 'RH'].includes(user?.role || '')) return <Navigate to="/ponto" replace />
+  return <>{children}</>
+}
+
+const RoleGuard = ({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode
+  allowedRoles: string[]
+}) => {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!allowedRoles.includes(user?.role || '')) return <Navigate to="/ponto" replace />
   return <>{children}</>
 }
 
@@ -45,6 +59,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
+              <Route path="/ponto" element={<Ponto />} />
               <Route
                 path="/"
                 element={
@@ -53,59 +68,108 @@ const App = () => (
                   </DashboardGuard>
                 }
               />
-              <Route path="/transacoes" element={<Transactions />} />
-              <Route path="/faturamento" element={<Billing />} />
-              <Route path="/pedidos" element={<Orders />} />
-              <Route path="/contas-a-pagar" element={<AccountsPayable />} />
-              <Route path="/contas-a-receber" element={<AccountsReceivable />} />
+              <Route
+                path="/transacoes"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <Transactions />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/faturamento"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <Billing />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/pedidos"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <Orders />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/contas-a-pagar"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <AccountsPayable />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/contas-a-receber"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <AccountsReceivable />
+                  </RoleGuard>
+                }
+              />
               <Route
                 path="/fluxo-caixa"
                 element={
-                  <AdminRoute>
+                  <RoleGuard allowedRoles={['Admin', 'Adm']}>
                     <CashFlow />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
               <Route
                 path="/favorecidos"
                 element={
-                  <AdminRoute allowedRoles={['Admin', 'Gerente']}>
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
                     <Clients />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
-              <Route path="/fornecedores" element={<Index />} />
-              <Route path="/relatorios" element={<Index />} />
+              <Route
+                path="/fornecedores"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <Index />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/relatorios"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <Index />
+                  </RoleGuard>
+                }
+              />
               <Route
                 path="/admin/bancos"
                 element={
-                  <AdminRoute allowedRoles={['Admin', 'Gerente']}>
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
                     <BanksAdmin />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
               <Route
                 path="/importacao"
                 element={
-                  <AdminRoute allowedRoles={['Admin', 'Gerente']}>
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
                     <ImportOfx />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
               <Route
                 path="/admin/plano-contas"
                 element={
-                  <AdminRoute>
+                  <RoleGuard allowedRoles={['Admin', 'Adm']}>
                     <ChartOfAccounts />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
               <Route
                 path="/admin/usuarios"
                 element={
-                  <AdminRoute>
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente', 'RH']}>
                     <UsersAdmin />
-                  </AdminRoute>
+                  </RoleGuard>
                 }
               />
             </Route>
