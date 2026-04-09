@@ -50,7 +50,6 @@ export type Database = {
       }
       chart_of_accounts: {
         Row: {
-          code: string | null
           created_at: string | null
           group: string
           id: string
@@ -59,7 +58,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          code?: string | null
           created_at?: string | null
           group: string
           id?: string
@@ -68,7 +66,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          code?: string | null
           created_at?: string | null
           group?: string
           id?: string
@@ -364,6 +361,7 @@ export type Database = {
         Row: {
           criado_em: string | null
           data_hora: string | null
+          entrada: string | null
           foto_url: string | null
           funcionario_id: string | null
           id: string | null
@@ -375,6 +373,7 @@ export type Database = {
         Insert: {
           criado_em?: string | null
           data_hora?: string | null
+          entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
           id?: string | null
@@ -386,6 +385,7 @@ export type Database = {
         Update: {
           criado_em?: string | null
           data_hora?: string | null
+          entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
           id?: string | null
@@ -690,7 +690,6 @@ export const Constants = {
 //   current_balance: numeric (nullable)
 // Table: chart_of_accounts
 //   id: uuid (not null, default: gen_random_uuid())
-//   code: text (nullable)
 //   name: text (not null)
 //   type: text (not null)
 //   group: text (not null)
@@ -786,6 +785,7 @@ export const Constants = {
 //   foto_url: text (nullable)
 //   wifi_conectado: boolean (nullable)
 //   criado_em: timestamp with time zone (nullable)
+//   entrada: text (nullable)
 // Table: profiles
 //   id: uuid (not null)
 //   email: text (not null)

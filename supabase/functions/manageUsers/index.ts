@@ -14,7 +14,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Verify authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('Missing Authorization header')
@@ -26,28 +25,27 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } },
     )
 
-    // Get caller user and verify authentication
     const {
       data: { user },
       error: authError,
     } = await supabaseClient.auth.getUser()
     if (authError || !user) throw new Error('Unauthorized')
 
-    // Create admin client to perform privileged operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    // Check if the caller is an Admin
     const { data: profile } = await supabaseAdmin
       .from('funcionarios')
       .select('role')
       .eq('email', user.email)
       .single()
 
-    if (profile?.role !== 'Admin' && profile?.role !== 'Adm') {
-      throw new Error('Acesso negado: Apenas administradores podem gerenciar usuários.')
+    if (!['Admin', 'Adm', 'Gerente', 'RH'].includes(profile?.role || '')) {
+      throw new Error(
+        'Acesso negado: Apenas administradores, gerentes ou RH podem gerenciar funcionários.',
+      )
     }
 
     const { action, payload } = await req.json()
@@ -55,21 +53,52 @@ Deno.serve(async (req: Request) => {
 
     switch (action) {
       case 'create': {
-        const { name, email, role } = payload
+        const {
+          name,
+          email,
+          password,
+          role,
+          cpf,
+          telefone,
+          data_nascimento,
+          cargo,
+          turno,
+          data_admissao,
+          salario,
+          vale_transporte,
+          endereco,
+          escala_turnos,
+        } = payload
 
-        // Create user in auth.users
         const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
-          password: 'Password123!', // Senha padrão inicial
+          password: password || 'Password123!',
           email_confirm: true,
           user_metadata: { name },
         })
         if (createError) throw createError
 
-        // Upsert into public.funcionarios
         const { data: profileData, error: profileError } = await supabaseAdmin
           .from('funcionarios')
-          .upsert({ email, nome: name, role: role || 'Cozinha' }, { onConflict: 'email' })
+          .upsert(
+            {
+              id: authData.user.id,
+              email,
+              nome: name,
+              role: role || 'Colaborador',
+              cpf,
+              telefone,
+              data_nascimento,
+              cargo,
+              turno,
+              data_admissao,
+              salario,
+              vale_transporte,
+              endereco,
+              escala_turnos,
+            },
+            { onConflict: 'email' },
+          )
           .select()
           .single()
 
@@ -98,26 +127,50 @@ Deno.serve(async (req: Request) => {
         break
       }
       case 'update': {
-        const { id, name, email, role } = payload
-        const updateData: any = {}
+        const {
+          id,
+          name,
+          email,
+          password,
+          role,
+          cpf,
+          telefone,
+          data_nascimento,
+          cargo,
+          turno,
+          data_admissao,
+          salario,
+          vale_transporte,
+          endereco,
+          escala_turnos,
+        } = payload
 
-        if (name) updateData.name = name
-        if (email) updateData.email = email
-        if (role) updateData.role = role
+        const authUpdates: any = {}
+        if (email) authUpdates.email = email
+        if (password) authUpdates.password = password
 
-        // Update email in auth.users if changed
-        if (email) {
-          const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(id, {
-            email,
-          })
+        if (Object.keys(authUpdates).length > 0) {
+          const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
+            id,
+            authUpdates,
+          )
           if (updateAuthError) throw updateAuthError
         }
 
-        // Update public.funcionarios
         const updateDataFunc: any = {}
-        if (name) updateDataFunc.nome = name
-        if (email) updateDataFunc.email = email
-        if (role) updateDataFunc.role = role
+        if (name !== undefined) updateDataFunc.nome = name
+        if (email !== undefined) updateDataFunc.email = email
+        if (role !== undefined) updateDataFunc.role = role
+        if (cpf !== undefined) updateDataFunc.cpf = cpf
+        if (telefone !== undefined) updateDataFunc.telefone = telefone
+        if (data_nascimento !== undefined) updateDataFunc.data_nascimento = data_nascimento
+        if (cargo !== undefined) updateDataFunc.cargo = cargo
+        if (turno !== undefined) updateDataFunc.turno = turno
+        if (data_admissao !== undefined) updateDataFunc.data_admissao = data_admissao
+        if (salario !== undefined) updateDataFunc.salario = salario
+        if (vale_transporte !== undefined) updateDataFunc.vale_transporte = vale_transporte
+        if (endereco !== undefined) updateDataFunc.endereco = endereco
+        if (escala_turnos !== undefined) updateDataFunc.escala_turnos = escala_turnos
 
         const { data, error } = await supabaseAdmin
           .from('funcionarios')

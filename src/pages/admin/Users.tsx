@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, Edit2 } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -11,13 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -30,37 +21,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { getUsers, updateUserRole, deleteUser, createUser } from '@/services/users'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
+import {
+  EmployeeFormModal,
+  initialFormData,
+  defaultEscala,
+} from '@/components/admin/EmployeeFormModal'
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userToDelete, setUserToDelete] = useState<string | null>(null)
-
-  // Modal states
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [formData, setFormData] = useState({ name: '', email: '', role: 'Colaborador' })
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [formData, setFormData] = useState(initialFormData)
 
   const { user: currentUser } = useAuth()
 
   const loadUsers = async () => {
     try {
-      const data = await getUsers()
-      setUsers(data)
+      const { data, error } = await supabase
+        .from('funcionarios')
+        .select('*')
+        .order('nome', { ascending: true })
+      if (error) throw error
+      setUsers(data || [])
     } catch (error) {
-      toast.error('Erro ao carregar usuários')
+      toast.error('Erro ao carregar funcionários')
     } finally {
       setIsLoading(false)
     }
@@ -70,61 +59,93 @@ export default function Users() {
     loadUsers()
   }, [])
 
-  useRealtime('profiles', () => {
+  useRealtime('funcionarios', () => {
     loadUsers()
   })
-
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    try {
-      await updateUserRole(userId, newRole)
-      toast.success('Papel atualizado com sucesso')
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao atualizar usuário')
-      loadUsers() // Revert local change
-    }
-  }
 
   const handleDelete = async () => {
     if (!userToDelete) return
     try {
-      await deleteUser(userToDelete)
-      toast.success('Usuário removido com sucesso')
+      const { data, error } = await supabase.functions.invoke('manageUsers', {
+        body: { action: 'delete', payload: { id: userToDelete } },
+      })
+      if (error || data?.status === 'error') throw error || new Error(data?.message)
+
+      toast.success('Funcionário removido com sucesso')
+      loadUsers()
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao deletar usuário')
+      toast.error(error.message || 'Erro ao deletar funcionário')
     } finally {
       setUserToDelete(null)
     }
   }
 
-  const handleCreate = async () => {
-    if (!formData.name || !formData.email) {
+  const handleSave = async (dataToSave: typeof initialFormData) => {
+    if (!dataToSave.name || !dataToSave.email) {
       toast.error('Preencha nome e e-mail')
       return
     }
 
-    setIsCreating(true)
+    setIsSaving(true)
     try {
-      await createUser(formData)
-      toast.success('Usuário criado com sucesso')
-      setIsCreateModalOpen(false)
-      setFormData({ name: '', email: '', role: 'Colaborador' })
+      const action = dataToSave.id ? 'update' : 'create'
+      const { data, error } = await supabase.functions.invoke('manageUsers', {
+        body: { action, payload: dataToSave },
+      })
+
+      if (error || data?.status === 'error') throw error || new Error(data?.message)
+
+      toast.success(`Funcionário ${dataToSave.id ? 'atualizado' : 'criado'} com sucesso`)
+      setIsModalOpen(false)
+      setFormData(initialFormData)
       loadUsers()
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar usuário')
+      toast.error(error.message || 'Erro ao salvar funcionário')
     } finally {
-      setIsCreating(false)
+      setIsSaving(false)
     }
+  }
+
+  const openEditModal = (user: any) => {
+    const parsedEscala =
+      typeof user.escala_turnos === 'string'
+        ? JSON.parse(user.escala_turnos)
+        : user.escala_turnos || defaultEscala
+
+    setFormData({
+      id: user.id,
+      name: user.nome || '',
+      email: user.email || '',
+      password: '',
+      cpf: user.cpf || '',
+      telefone: user.telefone || '',
+      data_nascimento: user.data_nascimento || '',
+      role: user.role || 'Colaborador',
+      cargo: user.cargo || '',
+      turno: user.turno || '',
+      data_admissao: user.data_admissao || '',
+      salario: user.salario || '',
+      vale_transporte: user.vale_transporte || '',
+      endereco: user.endereco || '',
+      escala_turnos: parsedEscala,
+    })
+    setIsModalOpen(true)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h2>
-          <p className="text-muted-foreground">Gerencie os acessos e permissões do sistema.</p>
+          <h2 className="text-3xl font-bold tracking-tight">RH / Funcionários</h2>
+          <p className="text-muted-foreground">Gerencie a equipe, perfis e escalas.</p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Novo Usuário
+        <Button
+          onClick={() => {
+            setFormData(initialFormData)
+            setIsModalOpen(true)
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" /> Novo Funcionário
         </Button>
       </div>
 
@@ -132,24 +153,25 @@ export default function Users() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Usuário</TableHead>
+              <TableHead>Funcionário</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Papel</TableHead>
-              <TableHead>Data de Criação</TableHead>
+              <TableHead>Cargo / Turno</TableHead>
+              <TableHead>Telefone</TableHead>
+              <TableHead>Perfil</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                  Nenhum usuário encontrado.
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  Nenhum funcionário encontrado.
                 </TableCell>
               </TableRow>
             ) : (
@@ -157,41 +179,35 @@ export default function Users() {
                 <TableRow key={user.id}>
                   <TableCell className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="" />
+                      <AvatarImage src={user.foto_url || ''} />
                       <AvatarFallback>
-                        {user.name?.substring(0, 2).toUpperCase() || 'US'}
+                        {user.nome?.substring(0, 2).toUpperCase() || 'UN'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="font-medium">{user.name || 'Sem nome'}</div>
+                    <div className="font-medium">{user.nome || 'Sem nome'}</div>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Select
-                      disabled={user.id === currentUser?.id}
-                      defaultValue={user.role || 'Colaborador'}
-                      onValueChange={(val) => handleRoleChange(user.id, val)}
-                    >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="Gerente">Gerente</SelectItem>
-                        <SelectItem value="Colaborador">Colaborador</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-col">
+                      <span>{user.cargo || '-'}</span>
+                      <span className="text-xs text-muted-foreground">{user.turno || '-'}</span>
+                    </div>
                   </TableCell>
+                  <TableCell>{user.telefone || '-'}</TableCell>
                   <TableCell>
-                    {user.created
-                      ? format(new Date(user.created), 'dd/MM/yyyy', { locale: ptBR })
-                      : '-'}
+                    <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium uppercase tracking-wider">
+                      {user.role || 'Colaborador'}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => openEditModal(user)}>
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={user.id === currentUser?.id}
+                      disabled={user.email === currentUser?.email}
                       onClick={() => setUserToDelete(user.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -209,7 +225,8 @@ export default function Users() {
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o usuário do sistema.
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário e seus
+              acessos ao sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -224,58 +241,13 @@ export default function Users() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Criar Novo Usuário</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome do usuário"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@exemplo.com"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="role">Papel (Role)</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(val) => setFormData({ ...formData, role: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um papel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Gerente">Gerente</SelectItem>
-                  <SelectItem value="Colaborador">Colaborador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreate} disabled={isCreating}>
-              {isCreating ? 'Criando...' : 'Criar Usuário'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmployeeFormModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        initialData={formData}
+        onSave={handleSave}
+        isSaving={isSaving}
+      />
     </div>
   )
 }
