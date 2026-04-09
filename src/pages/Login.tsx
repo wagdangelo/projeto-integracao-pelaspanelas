@@ -12,18 +12,44 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
-import { WalletCards } from 'lucide-react'
+import { WalletCards, Eye, EyeOff } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isFirstAccessModalOpen, setIsFirstAccessModalOpen] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isCreatingPassword, setIsCreatingPassword] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Se não houver senha, assumimos tentativa de primeiro acesso
+    if (!password) {
+      if (!email) {
+        toast({ title: 'Atenção', description: 'Informe seu e-mail.', variant: 'destructive' })
+        return
+      }
+      setIsFirstAccessModalOpen(true)
+      return
+    }
+
     setIsLoading(true)
 
     const { error } = await signIn(email, password)
@@ -41,6 +67,60 @@ export default function Login() {
         description: 'Login realizado com sucesso.',
       })
       navigate('/')
+    }
+  }
+
+  const handleFirstAccess = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) {
+      toast({
+        title: 'Erro',
+        description: 'Informe o e-mail no formulário principal.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Erro', description: 'As senhas não coincidem.', variant: 'destructive' })
+      return
+    }
+
+    const isValid =
+      newPassword.length >= 8 &&
+      /[A-Z]/.test(newPassword) &&
+      /[a-z]/.test(newPassword) &&
+      /[0-9]/.test(newPassword) &&
+      /[^A-Za-z0-9]/.test(newPassword)
+    if (!isValid) {
+      toast({
+        title: 'Erro de Validação',
+        description:
+          'A senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsCreatingPassword(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('setFirstPassword', {
+        body: { email, password: newPassword },
+      })
+
+      if (error || data?.error)
+        throw new Error(error?.message || data?.error || 'Erro ao criar senha')
+
+      toast({ title: 'Sucesso', description: 'Senha criada com sucesso. Entrando...' })
+      setIsFirstAccessModalOpen(false)
+
+      const { error: signInError } = await signIn(email, newPassword)
+      if (signInError) throw signInError
+
+      navigate('/')
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsCreatingPassword(false)
     }
   }
 
@@ -78,18 +158,108 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
                 className="bg-background/50 border-white/10"
               />
             </div>
           </CardContent>
-          <CardFooter className="pb-8 pt-4">
+          <CardFooter className="pb-8 pt-4 flex-col gap-4">
             <Button type="submit" className="w-full text-md h-11" disabled={isLoading}>
               {isLoading ? 'Entrando...' : 'Entrar'}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              className="text-white/70 hover:text-white"
+              onClick={() => {
+                if (!email) {
+                  toast({
+                    title: 'Atenção',
+                    description: 'Preencha seu e-mail acima primeiro.',
+                    variant: 'destructive',
+                  })
+                  return
+                }
+                setIsFirstAccessModalOpen(true)
+              }}
+            >
+              Primeiro acesso? Crie sua senha
             </Button>
           </CardFooter>
         </form>
       </Card>
+
+      <Dialog open={isFirstAccessModalOpen} onOpenChange={setIsFirstAccessModalOpen}>
+        <DialogContent className="sm:max-w-md border-white/10 bg-card/95 backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle>Primeiro Acesso - Criar Senha</DialogTitle>
+            <DialogDescription>
+              Defina uma senha segura para a conta <strong>{email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleFirstAccess} className="space-y-4 py-4">
+            <div className="space-y-2 relative">
+              <Label htmlFor="newPassword">Nova Senha</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  className="pr-10 bg-background/50 border-white/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2 relative">
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="pr-10 bg-background/50 border-white/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                A senha deve ter no mínimo 8 caracteres, incluindo uma letra maiúscula, uma
+                minúscula, um número e um caractere especial.
+              </p>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFirstAccessModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isCreatingPassword}>
+                {isCreatingPassword ? 'Criando...' : 'Criar Senha'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
