@@ -152,17 +152,40 @@ export default function Ponto() {
 
   const registerPonto = async () => {
     setStatus('registering')
+
+    let photoBase64 = ''
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas')
+      canvas.width = videoRef.current.videoWidth || 640
+      canvas.height = videoRef.current.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        photoBase64 = canvas.toDataURL('image/jpeg', 0.8)
+      }
+    }
+
     stopCamera()
 
     try {
-      const { error } = await supabase.from('pontos').insert({
+      const now = new Date()
+      const horas = now.getHours().toString().padStart(2, '0')
+      const minutos = now.getMinutes().toString().padStart(2, '0')
+      const entrada = `${horas}:${minutos}`
+
+      const payload = {
         funcionario_id: user?.id,
         tipo_ponto: 'Entrada',
-        data_hora: new Date().toISOString(),
+        data_hora: now.toISOString(),
+        criado_em: now.toISOString(),
+        entrada,
         latitude: location?.lat,
         longitude: location?.lng,
+        foto_url: photoBase64,
         wifi_conectado: true,
-      })
+      } as any
+
+      const { error } = await supabase.from('pontos').insert(payload)
 
       if (error) throw error
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.pontos ADD COLUMN IF NOT EXISTS entrada TEXT;
