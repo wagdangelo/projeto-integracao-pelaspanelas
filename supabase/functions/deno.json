@@ -4,6 +4,7 @@
     "sync-ifood-orders": 6,
     "ifoodWebhook": 5,
     "manageUsers": 3,
-    "setFirstPassword": 2
+    "setFirstPassword": 2,
+    "recalculate-bank-balance": 1
   }
 }
