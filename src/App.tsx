@@ -27,7 +27,7 @@ const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth()
   if (loading) return null
   if (['Cozinha', 'RH'].includes(user?.role || '')) return <Navigate to="/ponto" replace />
-  return <>{children}</>
+  return children
 }
 
 const RoleGuard = ({
@@ -40,7 +40,7 @@ const RoleGuard = ({
   const { user, loading } = useAuth()
   if (loading) return null
   if (!allowedRoles.includes(user?.role || '')) return <Navigate to="/ponto" replace />
-  return <>{children}</>
+  return children
 }
 
 const App = () => (
