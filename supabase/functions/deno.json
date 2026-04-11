@@ -2,7 +2,7 @@
   "_versions": {
     "parse-ofx": 10,
     "sync-ifood-orders": 8,
-    "ifoodWebhook": 9,
+    "ifoodWebhook": 10,
     "manageUsers": 5,
     "setFirstPassword": 4,
     "recalculate-bank-balance": 3
