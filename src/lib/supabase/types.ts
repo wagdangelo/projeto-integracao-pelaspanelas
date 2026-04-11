@@ -212,7 +212,7 @@ export type Database = {
           endereco: string | null
           escala_turnos: Json | null
           foto_url: string | null
-          id: string | null
+          id: string
           nome: string | null
           role: string | null
           salario: string | null
@@ -230,7 +230,7 @@ export type Database = {
           endereco?: string | null
           escala_turnos?: Json | null
           foto_url?: string | null
-          id?: string | null
+          id?: string
           nome?: string | null
           role?: string | null
           salario?: string | null
@@ -248,7 +248,7 @@ export type Database = {
           endereco?: string | null
           escala_turnos?: Json | null
           foto_url?: string | null
-          id?: string | null
+          id?: string
           nome?: string | null
           role?: string | null
           salario?: string | null
@@ -364,7 +364,7 @@ export type Database = {
           entrada: string | null
           foto_url: string | null
           funcionario_id: string | null
-          id: string | null
+          id: string
           latitude: number | null
           longitude: number | null
           tipo_ponto: string | null
@@ -376,7 +376,7 @@ export type Database = {
           entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
-          id?: string | null
+          id?: string
           latitude?: number | null
           longitude?: number | null
           tipo_ponto?: string | null
@@ -388,7 +388,7 @@ export type Database = {
           entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
-          id?: string | null
+          id?: string
           latitude?: number | null
           longitude?: number | null
           tipo_ponto?: string | null
@@ -526,6 +526,13 @@ export type Database = {
             columns: ['payment_method']
             isOneToOne: false
             referencedRelation: 'payment_methods'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transactions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'funcionarios'
             referencedColumns: ['id']
           },
         ]
@@ -732,7 +739,7 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 // Table: funcionarios
-//   id: text (nullable)
+//   id: uuid (not null, default: gen_random_uuid())
 //   nome: text (nullable)
 //   email: text (nullable)
 //   criado_em: timestamp with time zone (nullable)
@@ -776,8 +783,8 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 // Table: pontos
-//   id: text (nullable)
-//   funcionario_id: text (nullable)
+//   id: uuid (not null, default: gen_random_uuid())
+//   funcionario_id: uuid (nullable)
 //   tipo_ponto: text (nullable)
 //   data_hora: timestamp with time zone (nullable)
 //   latitude: double precision (nullable)
@@ -831,6 +838,7 @@ export const Constants = {
 //   FOREIGN KEY entregas_lojas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
 // Table: funcionarios
 //   UNIQUE funcionarios_email_key: UNIQUE (email)
+//   PRIMARY KEY funcionarios_pkey: PRIMARY KEY (id)
 // Table: orders
 //   PRIMARY KEY orders_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY orders_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
@@ -838,6 +846,8 @@ export const Constants = {
 //   PRIMARY KEY payees_pkey: PRIMARY KEY (id)
 // Table: payment_methods
 //   PRIMARY KEY payment_methods_pkey: PRIMARY KEY (id)
+// Table: pontos
+//   PRIMARY KEY pontos_pkey: PRIMARY KEY (id)
 // Table: profiles
 //   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
@@ -849,7 +859,7 @@ export const Constants = {
 //   FOREIGN KEY transactions_payee_fkey: FOREIGN KEY (payee) REFERENCES clients(id)
 //   FOREIGN KEY transactions_payment_method_fkey: FOREIGN KEY (payment_method) REFERENCES payment_methods(id)
 //   PRIMARY KEY transactions_pkey: PRIMARY KEY (id)
-//   FOREIGN KEY transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+//   FOREIGN KEY transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES funcionarios(id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: banks

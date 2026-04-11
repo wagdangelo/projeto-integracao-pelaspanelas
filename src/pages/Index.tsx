@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import {
-  ArrowUpRight,
-  ArrowDownRight,
   Wallet,
   TrendingUp,
   TrendingDown,
@@ -13,8 +11,6 @@ import {
 } from 'lucide-react'
 import {
   CartesianGrid,
-  Line,
-  LineChart,
   XAxis,
   YAxis,
   ResponsiveContainer,
@@ -22,10 +18,14 @@ import {
   Pie,
   Cell,
   Tooltip as RechartsTooltip,
+  ComposedChart,
+  Bar,
+  Line,
 } from 'recharts'
 
 import { useAuth } from '@/hooks/use-auth'
 import { getTransactions } from '@/services/transactions'
+import { getEntregasLojas } from '@/services/entregas_lojas'
 import { useRealtime } from '@/hooks/use-realtime'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,11 +42,17 @@ import { Button } from '@/components/ui/button'
 export default function Index() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<any[]>([])
+  const [entregas, setEntregas] = useState<any[]>([])
+  const [faturamentoPeriod, setFaturamentoPeriod] = useState('mensal')
 
   const loadData = async () => {
     if (user) {
-      const data = await getTransactions(user.id)
-      setTransactions(data)
+      const [txData, enData] = await Promise.all([
+        getTransactions(user.id),
+        getEntregasLojas().catch(() => []), // fallback to empty array if error
+      ])
+      setTransactions(txData)
+      setEntregas(enData)
     }
   }
 
@@ -54,9 +60,8 @@ export default function Index() {
     loadData()
   }, [user])
 
-  useRealtime('transactions', () => {
-    loadData()
-  })
+  useRealtime('transactions', () => loadData())
+  useRealtime('entregas_lojas', () => loadData())
 
   const summary = useMemo(() => {
     const totalIncome = transactions
@@ -102,24 +107,99 @@ export default function Index() {
     }
   }, [transactions])
 
-  const chartConfig = {
-    income: {
-      label: 'Entrada',
-      color: 'hsl(var(--chart-success))',
+  // Data for Faturamento Chart (Composed Chart)
+  const faturamentoData = useMemo(() => {
+    const dates = []
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    let groupBy = 'day'
+    if (faturamentoPeriod === 'semanal') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        dates.push(d)
+      }
+    } else if (faturamentoPeriod === 'mensal') {
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        dates.push(d)
+      }
+    } else {
+      groupBy = 'month'
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        dates.push(d)
+      }
+    }
+
+    const months = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ]
+
+    return dates.map((date) => {
+      let label = ''
+      let matchFn: (d: Date) => boolean
+
+      if (groupBy === 'month') {
+        label = `${months[date.getMonth()]} ${date.getFullYear().toString().slice(2)}`
+        matchFn = (d) => d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear()
+      } else {
+        label = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`
+        matchFn = (d) =>
+          d.getDate() === date.getDate() &&
+          d.getMonth() === date.getMonth() &&
+          d.getFullYear() === date.getFullYear()
+      }
+
+      const periodEntregas = entregas.filter((e) => {
+        // Safe date parsing to avoid timezone shifts
+        const ed = new Date(e.data.includes('T') ? e.data : `${e.data}T12:00:00`)
+        return !isNaN(ed.getTime()) && matchFn(ed)
+      })
+
+      const faturamento = periodEntregas.reduce(
+        (acc, curr) => acc + (Number(curr.faturamento) || 0),
+        0,
+      )
+      const quantidade = periodEntregas.reduce(
+        (acc, curr) => acc + (Number(curr.quantidade) || 0),
+        0,
+      )
+
+      return { label, faturamento, quantidade }
+    })
+  }, [entregas, faturamentoPeriod])
+
+  const chartConfigFaturamento = {
+    faturamento: {
+      label: 'Faturamento (R$)',
+      color: 'hsl(var(--chart-success, 142.1 76.2% 36.3%))',
     },
-    expense: {
-      label: 'Saída',
-      color: 'hsl(var(--chart-danger))',
+    quantidade: {
+      label: 'Qtd. Entregas',
+      color: 'hsl(var(--chart-primary, 221.2 83.2% 53.3%))',
     },
   }
 
-  // Process data for Donut Chart
+  // Data for Expense Breakdown Donut
   const expenseBreakdown = useMemo(() => {
     const breakdown = transactions
       .filter((t) => t.type === 'saída')
       .reduce(
         (acc, t) => {
-          // Grouping by description to simulate categories as requested
           const desc = t.description
             ? t.description.length > 15
               ? t.description.substring(0, 15) + '...'
@@ -141,51 +221,37 @@ export default function Index() {
       }))
       .sort((a, b) => b.value - a.value)
 
-    if (data.length === 0) {
-      data.push({ name: 'Sem gastos', value: 1, color: '#334155' })
-    }
+    if (data.length === 0) data.push({ name: 'Sem gastos', value: 1, color: '#334155' })
     return data
   }, [transactions])
 
-  // Mock Line Chart dynamic based on current data shape
-  const lineChartData = useMemo(() => {
-    const months = [
-      'Jan',
-      'Fev',
-      'Mar',
-      'Abr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Set',
-      'Out',
-      'Nov',
-      'Dez',
-    ]
-    const currentMonthIndex = new Date().getMonth()
+  // Data for Revenue Breakdown Donut
+  const revenueBreakdown = useMemo(() => {
+    const breakdown = transactions
+      .filter((t) => t.type === 'entrada')
+      .reduce(
+        (acc, t) => {
+          const payeeName =
+            t.payee?.name || t.expand?.payee?.name || t.description || 'Origem não informada'
+          const name = payeeName.length > 15 ? payeeName.substring(0, 15) + '...' : payeeName
+          acc[name] = (acc[name] || 0) + (t.value || t.amount || 0)
+          return acc
+        },
+        {} as Record<string, number>,
+      )
 
-    return Array.from({ length: 6 }).map((_, i) => {
-      const targetMonthIndex = (currentMonthIndex - 5 + i + 12) % 12
-      const monthTransactions = transactions.filter((t) => {
-        const d = new Date(t.launch_date || t.date)
-        return !isNaN(d.getTime()) && d.getMonth() === targetMonthIndex
-      })
+    const COLORS = ['#10B981', '#3B82F6', '#06B6D4', '#0EA5E9', '#14B8A6', '#64748B']
 
-      return {
-        month: months[targetMonthIndex],
-        income:
-          monthTransactions
-            .filter((t) => t.type === 'entrada')
-            .reduce((a, c) => a + (c.value || c.amount || 0), 0) ||
-          (i < 5 ? 3000 + Math.random() * 1000 : 0),
-        expense:
-          monthTransactions
-            .filter((t) => t.type === 'saída')
-            .reduce((a, c) => a + (c.value || c.amount || 0), 0) ||
-          (i < 5 ? 2000 + Math.random() * 1000 : 0),
-      }
-    })
+    const data = Object.entries(breakdown)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: COLORS[index % COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value)
+
+    if (data.length === 0) data.push({ name: 'Sem receitas', value: 1, color: '#334155' })
+    return data
   }, [transactions])
 
   return (
@@ -257,84 +323,89 @@ export default function Index() {
         </Card>
       </div>
 
-      {/* CHARTS ROW */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Cash Flow Line Chart */}
-        <Card className="lg:col-span-2 bg-card/40 border-white/5 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-semibold">
-              Fluxo de Caixa (Últimos 6 meses)
-            </CardTitle>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-rose-400" /> Saída
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" /> Entrada
-                </span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px] w-full mt-4">
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <LineChart
-                  data={lineChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="hsl(var(--border)/0.2)"
-                  />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value) => `${value >= 1000 ? value / 1000 + 'K' : value}`}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line
-                    type="monotone"
-                    dataKey="expense"
-                    stroke="var(--color-expense)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{
-                      r: 6,
-                      fill: 'var(--color-expense)',
-                      stroke: 'var(--background)',
-                      strokeWidth: 2,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="income"
-                    stroke="var(--color-income)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{
-                      r: 6,
-                      fill: 'var(--color-income)',
-                      stroke: 'var(--background)',
-                      strokeWidth: 2,
-                    }}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </div>
-          </CardContent>
-        </Card>
+      {/* FATURAMENTO CHART (FULL WIDTH) */}
+      <Card className="bg-card/40 border-white/5 shadow-xl">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base font-semibold">Faturamento (Entregas)</CardTitle>
+          <div className="flex items-center gap-4">
+            <Select value={faturamentoPeriod} onValueChange={setFaturamentoPeriod}>
+              <SelectTrigger className="w-[150px] h-8 text-xs bg-background/50 border-white/10">
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semanal">Últimos 7 dias</SelectItem>
+                <SelectItem value="mensal">Últimos 30 dias</SelectItem>
+                <SelectItem value="anual">Últimos 12 meses</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[280px] w-full mt-4">
+            <ChartContainer config={chartConfigFaturamento} className="h-full w-full">
+              <ComposedChart
+                data={faturamentoData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="hsl(var(--border)/0.2)"
+                />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis
+                  yAxisId="left"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(value) =>
+                    `${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`
+                  }
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar
+                  yAxisId="left"
+                  dataKey="faturamento"
+                  fill="var(--color-faturamento)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="quantidade"
+                  stroke="var(--color-quantidade)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{
+                    r: 6,
+                    fill: 'var(--color-quantidade)',
+                    stroke: 'var(--background)',
+                    strokeWidth: 2,
+                  }}
+                />
+              </ComposedChart>
+            </ChartContainer>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Expense Breakdown Donut Chart */}
+      {/* DONUT CHARTS ROW */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Divisão de Despesas */}
         <Card className="bg-card/40 border-white/5 shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">Divisão de Despesas</CardTitle>
@@ -361,7 +432,6 @@ export default function Index() {
                 </div>
               ))}
             </div>
-
             <div className="w-1/2 h-[180px] relative">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
@@ -393,9 +463,83 @@ export default function Index() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
                 <span className="text-sm font-bold text-white truncate max-w-full">
-                  {formatCurrency(summary.totalBalance).replace('R$', '')}
+                  {formatCurrency(
+                    expenseBreakdown[0]?.name === 'Sem gastos'
+                      ? 0
+                      : expenseBreakdown.reduce((a, b) => a + b.value, 0),
+                  ).replace('R$', '')}
                 </span>
-                <span className="text-[10px] text-muted-foreground">Saldo Total</span>
+                <span className="text-[10px] text-muted-foreground">Total Despesas</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Divisão de Receitas */}
+        <Card className="bg-card/40 border-white/5 shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">Divisão de Receitas</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between mt-2">
+            <div className="w-1/2 flex flex-col gap-3">
+              {revenueBreakdown.slice(0, 5).map((entry, index) => (
+                <div key={`legend-${index}`} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: entry.color }}
+                    />
+                    <span
+                      className="text-muted-foreground truncate max-w-[80px]"
+                      title={entry.name}
+                    >
+                      {entry.name}
+                    </span>
+                  </div>
+                  <span className="font-medium text-white pl-2">
+                    {formatCurrency(entry.value).replace('R$', '')}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="w-1/2 h-[180px] relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={revenueBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {revenueBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+                <span className="text-sm font-bold text-white truncate max-w-full">
+                  {formatCurrency(
+                    revenueBreakdown[0]?.name === 'Sem receitas'
+                      ? 0
+                      : revenueBreakdown.reduce((a, b) => a + b.value, 0),
+                  ).replace('R$', '')}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Total Receitas</span>
               </div>
             </div>
           </CardContent>
@@ -442,7 +586,9 @@ export default function Index() {
                           {tx.expand?.bank?.name || '-'}
                         </td>
                         <td
-                          className={`py-4 text-right font-medium ${tx.type === 'entrada' ? 'text-emerald-400' : 'text-rose-400'}`}
+                          className={`py-4 text-right font-medium ${
+                            tx.type === 'entrada' ? 'text-emerald-400' : 'text-rose-400'
+                          }`}
                         >
                           {tx.type === 'entrada' ? '+' : '-'}
                           {formatCurrency(tx.value || tx.amount || 0)}
@@ -483,7 +629,11 @@ export default function Index() {
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   <span
-                    className={`text-xs font-semibold px-1.5 py-0.5 rounded ${summary.saving >= 0 ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'}`}
+                    className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                      summary.saving >= 0
+                        ? 'text-emerald-400 bg-emerald-400/10'
+                        : 'text-rose-400 bg-rose-400/10'
+                    }`}
                   >
                     {summary.saving >= 0 ? '+' : ''}
                     {formatCurrency(summary.saving)}
