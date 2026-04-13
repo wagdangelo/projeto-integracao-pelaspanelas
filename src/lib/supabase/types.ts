@@ -199,7 +199,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'entregas_lojas_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'funcionarios'
+            referencedColumns: ['id']
+          },
+        ]
       }
       funcionarios: {
         Row: {
@@ -835,7 +843,7 @@ export const Constants = {
 //   PRIMARY KEY entities_pkey: PRIMARY KEY (id)
 // Table: entregas_lojas
 //   PRIMARY KEY entregas_lojas_pkey: PRIMARY KEY (id)
-//   FOREIGN KEY entregas_lojas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+//   FOREIGN KEY entregas_lojas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES funcionarios(id)
 // Table: funcionarios
 //   UNIQUE funcionarios_email_key: UNIQUE (email)
 //   PRIMARY KEY funcionarios_pkey: PRIMARY KEY (id)
@@ -934,6 +942,66 @@ export const Constants = {
 //     WITH CHECK: true
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION recalculate_bank_balance_func()
+//   CREATE OR REPLACE FUNCTION public.recalculate_bank_balance_func()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_bank_id uuid;
+//     v_initial numeric;
+//     v_entradas numeric;
+//     v_saidas numeric;
+//     v_new_balance numeric;
+//   BEGIN
+//     -- Identify the bank_id for the current operation
+//     IF TG_OP = 'DELETE' THEN
+//       v_bank_id := OLD.bank;
+//     ELSE
+//       v_bank_id := NEW.bank;
+//     END IF;
+//
+//     IF v_bank_id IS NOT NULL THEN
+//       SELECT initial_balance INTO v_initial FROM public.banks WHERE id = v_bank_id;
+//
+//       SELECT COALESCE(SUM(value), 0) INTO v_entradas
+//       FROM public.transactions
+//       WHERE bank = v_bank_id AND lower(type) = 'entrada' AND lower(status) = 'liquidado';
+//
+//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas
+//       FROM public.transactions
+//       WHERE bank = v_bank_id AND lower(type) IN ('saída', 'saida') AND lower(status) = 'liquidado';
+//
+//       v_new_balance := COALESCE(v_initial, 0) + v_entradas - v_saidas;
+//
+//       UPDATE public.banks SET current_balance = v_new_balance WHERE id = v_bank_id;
+//     END IF;
+//
+//     -- If it's an UPDATE and the bank changed, we also need to recalculate the old bank
+//     IF TG_OP = 'UPDATE' AND OLD.bank IS DISTINCT FROM NEW.bank AND OLD.bank IS NOT NULL THEN
+//       SELECT initial_balance INTO v_initial FROM public.banks WHERE id = OLD.bank;
+//
+//       SELECT COALESCE(SUM(value), 0) INTO v_entradas
+//       FROM public.transactions
+//       WHERE bank = OLD.bank AND lower(type) = 'entrada' AND lower(status) = 'liquidado';
+//
+//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas
+//       FROM public.transactions
+//       WHERE bank = OLD.bank AND lower(type) IN ('saída', 'saida') AND lower(status) = 'liquidado';
+//
+//       v_new_balance := COALESCE(v_initial, 0) + v_entradas - v_saidas;
+//
+//       UPDATE public.banks SET current_balance = v_new_balance WHERE id = OLD.bank;
+//     END IF;
+//
+//     IF TG_OP = 'DELETE' THEN
+//       RETURN OLD;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
 // FUNCTION rls_auto_enable()
 //   CREATE OR REPLACE FUNCTION public.rls_auto_enable()
 //    RETURNS event_trigger
@@ -980,6 +1048,8 @@ export const Constants = {
 // --- TRIGGERS ---
 // Table: orders
 //   update_orders_updated_at_trigger: CREATE TRIGGER update_orders_updated_at_trigger BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION update_orders_updated_at()
+// Table: transactions
+//   update_bank_balance_trigger: CREATE TRIGGER update_bank_balance_trigger AFTER INSERT OR DELETE OR UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION recalculate_bank_balance_func()
 
 // --- INDEXES ---
 // Table: funcionarios
