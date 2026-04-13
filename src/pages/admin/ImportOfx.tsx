@@ -2,6 +2,16 @@ import { useState, useRef, useEffect, DragEvent, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Card,
   CardContent,
@@ -58,6 +68,12 @@ export default function ImportOfx() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [clientsList, setClientsList] = useState<Client[]>([])
   const [selectedBank, setSelectedBank] = useState<string>('')
+
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([])
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
+  const [bulkAccountId, setBulkAccountId] = useState<string>('')
+  const [bulkGroup, setBulkGroup] = useState<string>('')
+  const [bulkPaymentMethodId, setBulkPaymentMethodId] = useState<string>('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
@@ -192,6 +208,39 @@ export default function ImportOfx() {
 
   const getSelectedBankName = () => banks.find((b) => b.id === selectedBank)?.name || '-'
 
+  const toggleSelectAll = () => {
+    if (selectedTxIds.length === transactions.length) {
+      setSelectedTxIds([])
+    } else {
+      setSelectedTxIds(transactions.map((tx) => tx._id))
+    }
+  }
+
+  const toggleSelection = (id: string) => {
+    setSelectedTxIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const handleBulkConfirm = () => {
+    setTransactions((prev) =>
+      prev.map((tx) => {
+        if (selectedTxIds.includes(tx._id)) {
+          return {
+            ...tx,
+            accountId: bulkAccountId || tx.accountId,
+            group: bulkGroup || tx.group,
+            paymentMethodId: bulkPaymentMethodId || tx.paymentMethodId,
+          }
+        }
+        return tx
+      }),
+    )
+    setSelectedTxIds([])
+    setIsBulkEditModalOpen(false)
+    setBulkAccountId('')
+    setBulkGroup('')
+    setBulkPaymentMethodId('')
+  }
+
   const uniqueGroups = useMemo(
     () =>
       Array.from(new Set(accounts.map((a) => a.group).filter(Boolean))).map((g) => ({
@@ -311,6 +360,15 @@ export default function ImportOfx() {
                 <Table className="min-w-[1200px]">
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={
+                            selectedTxIds.length === transactions.length && transactions.length > 0
+                          }
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Selecionar todas"
+                        />
+                      </TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Banco</TableHead>
                       <TableHead>Descrição</TableHead>
@@ -324,6 +382,13 @@ export default function ImportOfx() {
                   <TableBody>
                     {transactions.map((tx, i) => (
                       <TableRow key={tx._id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTxIds.includes(tx._id)}
+                            onCheckedChange={() => toggleSelection(tx._id)}
+                            aria-label={`Selecionar transação ${tx.description}`}
+                          />
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-sm">
                           {formatDate(tx.date)}
                         </TableCell>
@@ -385,12 +450,21 @@ export default function ImportOfx() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/50 p-3 rounded-md border border-amber-200 dark:border-amber-900/50">
-                <AlertCircle className="h-4 w-4" />
-                <p>
-                  Revise os detalhes acima antes de confirmar a importação para garantir relatórios
-                  precisos.
-                </p>
+              <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <Button
+                  variant="secondary"
+                  disabled={selectedTxIds.length === 0}
+                  onClick={() => setIsBulkEditModalOpen(true)}
+                >
+                  Lançar Selecionadas ({selectedTxIds.length})
+                </Button>
+                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/50 p-3 rounded-md border border-amber-200 dark:border-amber-900/50">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>
+                    Revise os detalhes acima antes de confirmar a importação para garantir
+                    relatórios precisos.
+                  </p>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end pt-6 border-t">
@@ -410,6 +484,83 @@ export default function ImportOfx() {
           </Card>
         </div>
       )}
+
+      <Dialog open={isBulkEditModalOpen} onOpenChange={setIsBulkEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Transações Selecionadas</DialogTitle>
+            <DialogDescription>
+              As alterações feitas aqui serão aplicadas a todas as {selectedTxIds.length} transações
+              selecionadas. Campos em branco não alterarão o valor atual.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Conta</Label>
+              <Select
+                value={bulkAccountId || undefined}
+                onValueChange={(v) => {
+                  setBulkAccountId(v)
+                  const acc = accounts.find((a) => a.id === v)
+                  if (acc && acc.group) {
+                    setBulkGroup(acc.group)
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <Select value={bulkGroup || undefined} onValueChange={setBulkGroup}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o grupo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueGroups.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Método de Pagamento</Label>
+              <Select
+                value={bulkPaymentMethodId || undefined}
+                onValueChange={setBulkPaymentMethodId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o método..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethodOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleBulkConfirm}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
