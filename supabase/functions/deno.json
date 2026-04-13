@@ -1,6 +1,6 @@
 {
   "_versions": {
-    "parse-ofx": 15,
+    "parse-ofx": 16,
     "sync-ifood-orders": 13,
     "ifoodWebhook": 15,
     "manageUsers": 10,
