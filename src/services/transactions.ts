@@ -89,7 +89,7 @@ export const getTransactionsForDashboard = async (
   return mapSupabaseToPB(data)
 }
 
-export const getTransactions = async (userId: string) => {
+export const getTransactions = async (userId: string, limitValue: number | 'all' = 20) => {
   const role = await getUserRole()
   let query = supabase
     .from('transactions')
@@ -97,7 +97,10 @@ export const getTransactions = async (userId: string) => {
       '*, bank:banks(*), payment_method:payment_methods(*), account_id:chart_of_accounts(*), payee:clients(*)',
     )
     .order('launch_date', { ascending: false })
-    .limit(20)
+
+  if (limitValue !== 'all') {
+    query = query.limit(limitValue)
+  }
 
   if (role !== 'Admin' && role !== 'Gerente') {
     query = query.eq('user_id', userId)

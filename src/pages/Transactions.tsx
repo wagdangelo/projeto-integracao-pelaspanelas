@@ -8,6 +8,7 @@ import { DateRange } from 'react-day-picker'
 import { useAuth } from '@/hooks/use-auth'
 import { getTransactions, deleteTransaction } from '@/services/transactions'
 import { getAccounts, type ChartOfAccount } from '@/services/chartOfAccounts'
+import { getBanks, type Bank } from '@/services/banks'
 import { useRealtime } from '@/hooks/use-realtime'
 import { TransactionModal } from '@/components/TransactionModal'
 import { Button } from '@/components/ui/button'
@@ -52,6 +53,7 @@ export default function Transactions() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<any[]>([])
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([])
+  const [banks, setBanks] = useState<Bank[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -61,16 +63,21 @@ export default function Transactions() {
 
   // Filters State
   const [filterType, setFilterType] = useState<string>('all')
+  const [filterGroup, setFilterGroup] = useState<string>('all')
+  const [filterAccount, setFilterAccount] = useState<string>('all')
+  const [filterBank, setFilterBank] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterCategory, setFilterCategory] = useState<string>('all')
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [limit, setLimit] = useState<string>('20')
 
   const isAdmin = user?.role === 'Admin'
 
   const loadData = async () => {
     if (!user) return
     try {
-      const data = await getTransactions(user.id)
+      setIsLoading(true)
+      const limitValue = limit === 'Todos' ? 'all' : parseInt(limit, 10)
+      const data = await getTransactions(user.id, limitValue)
       setTransactions(data)
     } catch (error) {
       console.error(error)
@@ -81,8 +88,35 @@ export default function Transactions() {
 
   useEffect(() => {
     loadData()
+  }, [user, limit])
+
+  useEffect(() => {
     getAccounts().then(setAccounts).catch(console.error)
-  }, [user])
+    getBanks().then(setBanks).catch(console.error)
+  }, [])
+
+  const groups = useMemo(() => {
+    const uniqueGroups = new Set(accounts.map((a) => a.group).filter(Boolean))
+    return Array.from(uniqueGroups).sort()
+  }, [accounts])
+
+  const filteredAccounts = useMemo(() => {
+    if (filterGroup === 'all') return accounts
+    return accounts.filter((a) => a.group === filterGroup)
+  }, [accounts, filterGroup])
+
+  useEffect(() => {
+    if (filterGroup !== 'all' && filterAccount !== 'all') {
+      const accountExists = filteredAccounts.find((a) => a.id === filterAccount)
+      if (!accountExists) setFilterAccount('all')
+    }
+  }, [filterGroup, filteredAccounts, filterAccount])
+
+  const parseDateStr = (dateStr: string) => {
+    if (!dateStr) return new Date()
+    if (dateStr.length === 10) return new Date(dateStr + 'T12:00:00')
+    return new Date(dateStr)
+  }
 
   useRealtime('transactions', () => {
     loadData()
@@ -118,27 +152,27 @@ export default function Transactions() {
     return transactions.filter((tx) => {
       if (filterType !== 'all' && tx.type !== filterType) return false
       if (filterStatus !== 'all' && tx.status !== filterStatus) return false
-      if (filterCategory !== 'all' && tx.account_id !== filterCategory) return false
-
-      if (dateRange?.from) {
-        const txDate = new Date(tx.launch_date)
-        txDate.setHours(0, 0, 0, 0)
-        const fromDate = new Date(dateRange.from)
-        fromDate.setHours(0, 0, 0, 0)
-        if (txDate < fromDate) return false
+      if (filterAccount !== 'all' && tx.account_id !== filterAccount) return false
+      if (filterBank !== 'all' && tx.bank !== filterBank) return false
+      if (filterGroup !== 'all') {
+        if (tx.expand?.account_id?.group !== filterGroup) return false
       }
 
-      if (dateRange?.to) {
-        const txDate = new Date(tx.launch_date)
-        txDate.setHours(0, 0, 0, 0)
-        const toDate = new Date(dateRange.to)
-        toDate.setHours(23, 59, 59, 999)
-        if (txDate > toDate) return false
+      if (dateRange?.from || dateRange?.to) {
+        const txDateStr = tx.launch_date.substring(0, 10)
+        if (dateRange?.from) {
+          const fromStr = format(dateRange.from, 'yyyy-MM-dd')
+          if (txDateStr < fromStr) return false
+        }
+        if (dateRange?.to) {
+          const toStr = format(dateRange.to, 'yyyy-MM-dd')
+          if (txDateStr > toStr) return false
+        }
       }
 
       return true
     })
-  }, [transactions, filterType, filterStatus, filterCategory, dateRange])
+  }, [transactions, filterType, filterStatus, filterAccount, filterBank, filterGroup, dateRange])
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
@@ -197,7 +231,7 @@ export default function Transactions() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-card p-4 border rounded-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 bg-card p-4 border rounded-md items-end">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Tipo</label>
           <Select value={filterType} onValueChange={setFilterType}>
@@ -213,16 +247,50 @@ export default function Transactions() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Categoria</label>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <label className="text-xs font-medium text-muted-foreground">Grupo</label>
+          <Select value={filterGroup} onValueChange={setFilterGroup}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Conta</label>
+          <Select value={filterAccount} onValueChange={setFilterAccount}>
             <SelectTrigger>
               <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
-              {accounts.map((acc) => (
+              {filteredAccounts.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
                   {acc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Banco</label>
+          <Select value={filterBank} onValueChange={setFilterBank}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {banks.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -251,21 +319,21 @@ export default function Transactions() {
               <Button
                 variant="outline"
                 className={cn(
-                  'w-full justify-start text-left font-normal',
+                  'w-full justify-start text-left font-normal px-3',
                   !dateRange && 'text-muted-foreground',
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                 {dateRange?.from ? (
                   dateRange.to ? (
-                    <>
-                      {format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}
-                    </>
+                    <span className="truncate">
+                      {format(dateRange.from, 'dd/MM')} - {format(dateRange.to, 'dd/MM')}
+                    </span>
                   ) : (
-                    format(dateRange.from, 'dd/MM/yyyy')
+                    <span className="truncate">{format(dateRange.from, 'dd/MM/yyyy')}</span>
                   )
                 ) : (
-                  <span>Selecione um período</span>
+                  <span className="truncate">Selecione</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -280,6 +348,21 @@ export default function Transactions() {
               />
             </PopoverContent>
           </Popover>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Exibir</label>
+          <Select value={limit} onValueChange={setLimit}>
+            <SelectTrigger>
+              <SelectValue placeholder="20" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+              <SelectItem value="Todos">Todos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -315,7 +398,7 @@ export default function Transactions() {
               filteredTransactions.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell className="whitespace-nowrap">
-                    {format(new Date(tx.launch_date), 'dd/MM/yyyy')}
+                    {format(parseDateStr(tx.launch_date), 'dd/MM/yyyy')}
                   </TableCell>
                   <TableCell className="font-medium">{tx.description}</TableCell>
                   <TableCell className="text-right font-medium whitespace-nowrap">
