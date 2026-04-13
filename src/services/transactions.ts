@@ -64,7 +64,7 @@ export const getTransactions = async (userId: string) => {
       '*, bank:banks(*), payment_method:payment_methods(*), account_id:chart_of_accounts(*), payee:clients(*)',
     )
     .order('launch_date', { ascending: false })
-    .limit(10)
+    .limit(20)
 
   if (role !== 'Admin' && role !== 'Gerente') {
     query = query.eq('user_id', userId)
