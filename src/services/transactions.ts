@@ -56,6 +56,39 @@ const mapSupabaseToPB = (records: any[]) => {
   })
 }
 
+export const getTransactionsForDashboard = async (
+  userId: string,
+  period: 'tudo' | 'mes' | 'ano' = 'tudo',
+) => {
+  const role = await getUserRole()
+  let query = supabase
+    .from('transactions')
+    .select(
+      '*, bank:banks(*), payment_method:payment_methods(*), account_id:chart_of_accounts(*), payee:clients(*)',
+    )
+    .order('launch_date', { ascending: false })
+
+  if (role !== 'Admin' && role !== 'Gerente') {
+    query = query.eq('user_id', userId)
+  }
+
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = (now.getMonth() + 1).toString().padStart(2, '0')
+
+  if (period === 'mes') {
+    query = query
+      .gte('launch_date', `${y}-${m}-01`)
+      .lte('launch_date', `${y}-${m}-31T23:59:59.999Z`)
+  } else if (period === 'ano') {
+    query = query.gte('launch_date', `${y}-01-01`).lte('launch_date', `${y}-12-31T23:59:59.999Z`)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return mapSupabaseToPB(data)
+}
+
 export const getTransactions = async (userId: string) => {
   const role = await getUserRole()
   let query = supabase
