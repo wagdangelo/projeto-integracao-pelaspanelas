@@ -207,7 +207,7 @@ export default function Billing() {
     })
   }, [records, dateRange, monthFilter, storeFilter, shiftFilter])
 
-  const recentRecords = useMemo(() => filteredData.slice(0, 10), [filteredData])
+  const recentRecords = useMemo(() => filteredData.slice(0, 5), [filteredData])
 
   // PIVOT TABLE LOGIC
   const pivotDates = useMemo(() => {
