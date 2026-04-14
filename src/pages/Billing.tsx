@@ -57,17 +57,8 @@ import {
   deleteEntregaLoja,
   type EntregaLoja,
 } from '@/services/entregas_lojas'
+import { supabase } from '@/lib/supabase/client'
 import { useRealtime } from '@/hooks/use-realtime'
-
-const STORES = [
-  'Pelas Panelas Delivery',
-  'Pelas Panelas App',
-  'Feijoada do Pelas',
-  'Feijocas Ifood',
-  'Feijocas 99Food',
-  'Feijocas Keeta',
-  'Balcão',
-]
 
 const formatBRL = (value: string) => {
   const digits = value.replace(/\D/g, '')
@@ -78,6 +69,10 @@ const formatBRL = (value: string) => {
   })
 }
 const parseBRL = (value: string) => parseInt(value.replace(/\D/g, '') || '0', 10) / 100
+
+const formatCurrency = (val: number) =>
+  val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const formatNumber = (val: number) => val.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
 const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
@@ -92,6 +87,7 @@ export default function Billing() {
   const isAdminOrManager = user?.role === 'Admin' || user?.role === 'Gerente'
 
   const [records, setRecords] = useState<EntregaLoja[]>([])
+  const [stores, setStores] = useState<{ id: string; nome_fantasia: string }[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [monthFilter, setMonthFilter] = useState<string>(format(new Date(), 'yyyy-MM'))
   const [storeFilter, setStoreFilter] = useState<string>('all')
@@ -102,8 +98,14 @@ export default function Billing() {
 
   const loadData = async () => {
     try {
-      const data = await getEntregasLojas()
-      setRecords(data)
+      const [entregasData, lojasData] = await Promise.all([
+        getEntregasLojas(),
+        supabase.from('lojas').select('id, nome_fantasia').order('nome_fantasia'),
+      ])
+      setRecords(entregasData)
+      if (lojasData.data) {
+        setStores(lojasData.data)
+      }
     } catch (error) {
       toast.error('Erro ao carregar dados.')
     }
@@ -207,38 +209,148 @@ export default function Billing() {
 
   const recentRecords = useMemo(() => filteredData.slice(0, 10), [filteredData])
 
-  const groupedData = useMemo(() => {
-    const group = filteredData.reduce(
-      (acc, curr) => {
-        if (!acc[curr.loja]) acc[curr.loja] = { quantidade: 0, faturamento: 0, records: [] }
-        acc[curr.loja].quantidade += curr.quantidade
-        acc[curr.loja].faturamento += curr.faturamento
-        acc[curr.loja].records.push(curr)
-        return acc
-      },
-      {} as Record<string, { quantidade: number; faturamento: number; records: EntregaLoja[] }>,
-    )
-    Object.values(group).forEach((g) =>
-      g.records.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
-    )
-    return group
+  // PIVOT TABLE LOGIC
+  const pivotDates = useMemo(() => {
+    const dates = new Set<string>()
+    filteredData.forEach((r) => dates.add(format(new Date(r.data), 'yyyy-MM-dd')))
+    return Array.from(dates).sort((a, b) => b.localeCompare(a))
   }, [filteredData])
 
-  const grandTotal = useMemo(
-    () =>
-      filteredData.reduce(
-        (acc, curr) => {
-          acc.quantidade += curr.quantidade
-          acc.faturamento += curr.faturamento
-          return acc
+  const pivotRows = useMemo(() => {
+    return pivotDates.map((dateStr) => {
+      const rowRecords = filteredData.filter(
+        (r) => format(new Date(r.data), 'yyyy-MM-dd') === dateStr,
+      )
+
+      const row: any = {
+        date: dateStr,
+        stores: {},
+        totais: {
+          diaQtd: 0,
+          diaVal: 0,
+          noiteQtd: 0,
+          noiteVal: 0,
+          geralQtd: 0,
+          geralVal: 0,
         },
-        { quantidade: 0, faturamento: 0 },
-      ),
-    [filteredData],
-  )
+      }
+
+      stores.forEach((store) => {
+        const storeRecords = rowRecords.filter((r) => r.loja === store.nome_fantasia)
+        const dia = storeRecords.filter((r) => r.turno === 'Dia')
+        const noite = storeRecords.filter((r) => r.turno === 'Noite')
+
+        const diaQtd = dia.reduce((sum, r) => sum + r.quantidade, 0)
+        const diaVal = dia.reduce((sum, r) => sum + r.faturamento, 0)
+        const noiteQtd = noite.reduce((sum, r) => sum + r.quantidade, 0)
+        const noiteVal = noite.reduce((sum, r) => sum + r.faturamento, 0)
+
+        row.stores[store.nome_fantasia] = {
+          diaQtd,
+          diaVal,
+          noiteQtd,
+          noiteVal,
+        }
+
+        row.totais.diaQtd += diaQtd
+        row.totais.diaVal += diaVal
+        row.totais.noiteQtd += noiteQtd
+        row.totais.noiteVal += noiteVal
+      })
+
+      row.totais.geralQtd = row.totais.diaQtd + row.totais.noiteQtd
+      row.totais.geralVal = row.totais.diaVal + row.totais.noiteVal
+
+      return row
+    })
+  }, [pivotDates, filteredData, stores])
+
+  const summary = useMemo(() => {
+    const total = {
+      stores: {} as Record<string, any>,
+      totais: {
+        diaQtd: 0,
+        diaVal: 0,
+        noiteQtd: 0,
+        noiteVal: 0,
+        geralQtd: 0,
+        geralVal: 0,
+      },
+    }
+
+    stores.forEach((store) => {
+      total.stores[store.nome_fantasia] = {
+        diaQtd: 0,
+        diaVal: 0,
+        noiteQtd: 0,
+        noiteVal: 0,
+      }
+    })
+
+    pivotRows.forEach((row) => {
+      stores.forEach((store) => {
+        total.stores[store.nome_fantasia].diaQtd += row.stores[store.nome_fantasia].diaQtd
+        total.stores[store.nome_fantasia].diaVal += row.stores[store.nome_fantasia].diaVal
+        total.stores[store.nome_fantasia].noiteQtd += row.stores[store.nome_fantasia].noiteQtd
+        total.stores[store.nome_fantasia].noiteVal += row.stores[store.nome_fantasia].noiteVal
+      })
+
+      total.totais.diaQtd += row.totais.diaQtd
+      total.totais.diaVal += row.totais.diaVal
+      total.totais.noiteQtd += row.totais.noiteQtd
+      total.totais.noiteVal += row.totais.noiteVal
+    })
+
+    total.totais.geralQtd = total.totais.diaQtd + total.totais.noiteQtd
+    total.totais.geralVal = total.totais.diaVal + total.totais.noiteVal
+
+    const daysCount = pivotRows.length || 1
+
+    const media = {
+      stores: {} as Record<string, any>,
+      totais: {
+        diaQtd: total.totais.diaQtd / daysCount,
+        diaVal: total.totais.diaVal / daysCount,
+        noiteQtd: total.totais.noiteQtd / daysCount,
+        noiteVal: total.totais.noiteVal / daysCount,
+        geralQtd: total.totais.geralQtd / daysCount,
+        geralVal: total.totais.geralVal / daysCount,
+      },
+    }
+
+    const ticket = {
+      stores: {} as Record<string, any>,
+      totais: {
+        diaQtd: 0,
+        diaVal: total.totais.diaQtd > 0 ? total.totais.diaVal / total.totais.diaQtd : 0,
+        noiteQtd: 0,
+        noiteVal: total.totais.noiteQtd > 0 ? total.totais.noiteVal / total.totais.noiteQtd : 0,
+        geralQtd: 0,
+        geralVal: total.totais.geralQtd > 0 ? total.totais.geralVal / total.totais.geralQtd : 0,
+      },
+    }
+
+    stores.forEach((store) => {
+      const s = total.stores[store.nome_fantasia]
+      media.stores[store.nome_fantasia] = {
+        diaQtd: s.diaQtd / daysCount,
+        diaVal: s.diaVal / daysCount,
+        noiteQtd: s.noiteQtd / daysCount,
+        noiteVal: s.noiteVal / daysCount,
+      }
+      ticket.stores[store.nome_fantasia] = {
+        diaQtd: 0,
+        diaVal: s.diaQtd > 0 ? s.diaVal / s.diaQtd : 0,
+        noiteQtd: 0,
+        noiteVal: s.noiteQtd > 0 ? s.noiteVal / s.noiteQtd : 0,
+      }
+    })
+
+    return { total, media, ticket }
+  }, [pivotRows, stores])
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-6 max-w-full mx-auto pb-10">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Faturamento</h2>
@@ -276,9 +388,9 @@ export default function Billing() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as Lojas</SelectItem>
-              {STORES.map((s) => (
-                <SelectItem key={`filter-${s}`} value={s}>
-                  {s}
+              {stores.map((s) => (
+                <SelectItem key={`filter-${s.id}`} value={s.nome_fantasia}>
+                  {s.nome_fantasia}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -444,9 +556,9 @@ export default function Billing() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {STORES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s}
+                            {stores.map((s) => (
+                              <SelectItem key={s.id} value={s.nome_fantasia}>
+                                {s.nome_fantasia}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -502,11 +614,11 @@ export default function Billing() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Últimos Lançamentos</CardTitle>
-            <CardDescription>Seus 5 registros mais recentes nos filtros atuais.</CardDescription>
+            <CardDescription>Seus registros mais recentes nos filtros atuais.</CardDescription>
           </CardHeader>
           <CardContent>
             {recentRecords.length > 0 ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -523,7 +635,7 @@ export default function Billing() {
                   <TableBody>
                     {recentRecords.map((r) => (
                       <TableRow key={r.id}>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium whitespace-nowrap">
                           {format(new Date(r.data), 'dd/MM/yyyy')}
                         </TableCell>
                         <TableCell>
@@ -534,10 +646,7 @@ export default function Billing() {
                         <TableCell>{r.turno}</TableCell>
                         <TableCell className="text-right">{r.quantidade}</TableCell>
                         <TableCell className="text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                          {r.faturamento.toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
+                          {formatCurrency(r.faturamento)}
                         </TableCell>
                         {isAdminOrManager && (
                           <TableCell className="text-right">
@@ -574,93 +683,288 @@ export default function Billing() {
       {isAdminOrManager && (
         <Card>
           <CardHeader>
-            <CardTitle>Relatório Avançado de Faturamento</CardTitle>
-            <CardDescription>Visão detalhada com subtotais por loja.</CardDescription>
+            <CardTitle>Relatório Avançado de Faturamento (Pivot)</CardTitle>
+            <CardDescription>
+              Visão consolidada de todas as lojas cadastradas por data e turno.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
+            <div className="rounded-md border overflow-x-auto pb-2">
+              <Table className="w-full text-sm">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Data</TableHead>
-                    <TableHead>Turno</TableHead>
-                    <TableHead>Loja</TableHead>
-                    <TableHead className="text-right">Quantidade</TableHead>
-                    <TableHead className="text-right">Faturamento</TableHead>
-                    <TableHead className="w-[100px] text-right">Ações</TableHead>
+                  <TableRow>
+                    <TableHead
+                      rowSpan={2}
+                      className="align-middle border-r bg-muted/50 min-w-[100px]"
+                    >
+                      Data
+                    </TableHead>
+                    {stores.map((s) => (
+                      <TableHead
+                        key={s.id}
+                        colSpan={4}
+                        className="text-center border-r bg-muted/30 font-semibold"
+                      >
+                        {s.nome_fantasia}
+                      </TableHead>
+                    ))}
+                    <TableHead
+                      colSpan={2}
+                      className="text-center border-r bg-primary/5 text-primary"
+                    >
+                      Total Dia
+                    </TableHead>
+                    <TableHead
+                      colSpan={2}
+                      className="text-center border-r bg-primary/5 text-primary"
+                    >
+                      Total Noite
+                    </TableHead>
+                    <TableHead
+                      colSpan={2}
+                      className="text-center bg-primary/10 text-primary font-bold"
+                    >
+                      Total Geral
+                    </TableHead>
+                  </TableRow>
+                  <TableRow>
+                    {stores.map((s) => (
+                      <React.Fragment key={`${s.id}-sub`}>
+                        <TableHead className="text-right text-xs bg-muted/10">Dia Qtd</TableHead>
+                        <TableHead className="text-right text-xs border-r bg-muted/10">
+                          Dia R$
+                        </TableHead>
+                        <TableHead className="text-right text-xs bg-muted/10">Noite Qtd</TableHead>
+                        <TableHead className="text-right text-xs border-r bg-muted/10">
+                          Noite R$
+                        </TableHead>
+                      </React.Fragment>
+                    ))}
+                    <TableHead className="text-right text-xs bg-primary/5">Qtd</TableHead>
+                    <TableHead className="text-right text-xs border-r bg-primary/5">R$</TableHead>
+                    <TableHead className="text-right text-xs bg-primary/5">Qtd</TableHead>
+                    <TableHead className="text-right text-xs border-r bg-primary/5">R$</TableHead>
+                    <TableHead className="text-right text-xs bg-primary/10 font-bold">
+                      Qtd
+                    </TableHead>
+                    <TableHead className="text-right text-xs bg-primary/10 font-bold">R$</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(groupedData).length > 0 ? (
-                    <>
-                      {Object.entries(groupedData).map(([store, data]) => (
-                        <React.Fragment key={store}>
-                          {data.records.map((r) => (
-                            <TableRow key={r.id}>
-                              <TableCell>{format(new Date(r.data), 'dd/MM/yyyy')}</TableCell>
-                              <TableCell>{r.turno}</TableCell>
-                              <TableCell>{r.loja}</TableCell>
-                              <TableCell className="text-right">{r.quantidade}</TableCell>
-                              <TableCell className="text-right">
-                                {r.faturamento.toLocaleString('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                })}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(r)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setDeletingRecordId(r.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          <TableRow className="bg-primary/5 hover:bg-primary/5 font-medium border-b-2 border-border/50">
-                            <TableCell colSpan={3} className="text-right text-primary">
-                              Subtotal {store}
-                            </TableCell>
-                            <TableCell className="text-right text-primary">
-                              {data.quantidade}
-                            </TableCell>
-                            <TableCell className="text-right text-primary">
-                              {data.faturamento.toLocaleString('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              })}
-                            </TableCell>
-                            <TableCell />
-                          </TableRow>
-                        </React.Fragment>
-                      ))}
-                      <TableRow className="bg-muted hover:bg-muted font-bold text-base">
-                        <TableCell colSpan={3} className="text-right uppercase tracking-wider">
-                          Total Geral
+                  {pivotRows.length > 0 ? (
+                    pivotRows.map((row) => (
+                      <TableRow key={row.date}>
+                        <TableCell className="border-r whitespace-nowrap font-medium bg-background/50 sticky left-0 z-10">
+                          {format(parseISO(row.date), 'dd/MM/yyyy')}
                         </TableCell>
-                        <TableCell className="text-right">{grandTotal.quantidade}</TableCell>
-                        <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
-                          {grandTotal.faturamento.toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
+                        {stores.map((s) => {
+                          const data = row.stores[s.nome_fantasia]
+                          return (
+                            <React.Fragment key={s.id}>
+                              <TableCell className="text-right text-muted-foreground">
+                                {data.diaQtd || '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r">
+                                {data.diaVal ? formatCurrency(data.diaVal) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {data.noiteQtd || '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r">
+                                {data.noiteVal ? formatCurrency(data.noiteVal) : '-'}
+                              </TableCell>
+                            </React.Fragment>
+                          )
+                        })}
+                        <TableCell className="text-right bg-primary/5/30">
+                          {row.totais.diaQtd || '-'}
                         </TableCell>
-                        <TableCell />
+                        <TableCell className="text-right border-r bg-primary/5/30 font-medium">
+                          {row.totais.diaVal ? formatCurrency(row.totais.diaVal) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right bg-primary/5/30">
+                          {row.totais.noiteQtd || '-'}
+                        </TableCell>
+                        <TableCell className="text-right border-r bg-primary/5/30 font-medium">
+                          {row.totais.noiteVal ? formatCurrency(row.totais.noiteVal) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right bg-primary/10/30 font-bold">
+                          {row.totais.geralQtd || '-'}
+                        </TableCell>
+                        <TableCell className="text-right bg-primary/10/30 font-bold text-emerald-600 dark:text-emerald-400">
+                          {row.totais.geralVal ? formatCurrency(row.totais.geralVal) : '-'}
+                        </TableCell>
                       </TableRow>
-                    </>
+                    ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                      <TableCell
+                        colSpan={1 + stores.length * 4 + 6}
+                        className="text-center py-10 text-muted-foreground"
+                      >
                         Nenhum registro encontrado para os filtros selecionados.
                       </TableCell>
                     </TableRow>
+                  )}
+
+                  {pivotRows.length > 0 && (
+                    <>
+                      {/* TOTAL */}
+                      <TableRow className="bg-rose-100 dark:bg-rose-950/30 hover:bg-rose-100/90 dark:hover:bg-rose-950/40 font-bold">
+                        <TableCell className="border-r whitespace-nowrap text-rose-900 dark:text-rose-100 sticky left-0 z-10 bg-rose-100 dark:bg-[#3f1f23]">
+                          TOTAL
+                        </TableCell>
+                        {stores.map((s) => {
+                          const data = summary.total.stores[s.nome_fantasia]
+                          return (
+                            <React.Fragment key={`total-${s.id}`}>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                {data.diaQtd || '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.diaVal ? formatCurrency(data.diaVal) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                {data.noiteQtd || '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.noiteVal ? formatCurrency(data.noiteVal) : '-'}
+                              </TableCell>
+                            </React.Fragment>
+                          )
+                        })}
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          {summary.total.totais.diaQtd || '-'}
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.total.totais.diaVal
+                            ? formatCurrency(summary.total.totais.diaVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          {summary.total.totais.noiteQtd || '-'}
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.total.totais.noiteVal
+                            ? formatCurrency(summary.total.totais.noiteVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100 text-base">
+                          {summary.total.totais.geralQtd || '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100 text-base">
+                          {summary.total.totais.geralVal
+                            ? formatCurrency(summary.total.totais.geralVal)
+                            : '-'}
+                        </TableCell>
+                      </TableRow>
+
+                      {/* MÉDIA */}
+                      <TableRow className="bg-rose-100 dark:bg-rose-950/30 hover:bg-rose-100/90 dark:hover:bg-rose-950/40 font-bold">
+                        <TableCell className="border-r whitespace-nowrap text-rose-900 dark:text-rose-100 sticky left-0 z-10 bg-rose-100 dark:bg-[#3f1f23]">
+                          MÉDIA
+                        </TableCell>
+                        {stores.map((s) => {
+                          const data = summary.media.stores[s.nome_fantasia]
+                          return (
+                            <React.Fragment key={`media-${s.id}`}>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                {data.diaQtd ? formatNumber(data.diaQtd) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.diaVal ? formatCurrency(data.diaVal) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                {data.noiteQtd ? formatNumber(data.noiteQtd) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.noiteVal ? formatCurrency(data.noiteVal) : '-'}
+                              </TableCell>
+                            </React.Fragment>
+                          )
+                        })}
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          {summary.media.totais.diaQtd
+                            ? formatNumber(summary.media.totais.diaQtd)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.media.totais.diaVal
+                            ? formatCurrency(summary.media.totais.diaVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          {summary.media.totais.noiteQtd
+                            ? formatNumber(summary.media.totais.noiteQtd)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.media.totais.noiteVal
+                            ? formatCurrency(summary.media.totais.noiteVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100">
+                          {summary.media.totais.geralQtd
+                            ? formatNumber(summary.media.totais.geralQtd)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100">
+                          {summary.media.totais.geralVal
+                            ? formatCurrency(summary.media.totais.geralVal)
+                            : '-'}
+                        </TableCell>
+                      </TableRow>
+
+                      {/* TICKET */}
+                      <TableRow className="bg-rose-100 dark:bg-rose-950/30 hover:bg-rose-100/90 dark:hover:bg-rose-950/40 font-bold border-b-2 border-rose-300 dark:border-rose-800">
+                        <TableCell className="border-r whitespace-nowrap text-rose-900 dark:text-rose-100 sticky left-0 z-10 bg-rose-100 dark:bg-[#3f1f23]">
+                          TICKET
+                        </TableCell>
+                        {stores.map((s) => {
+                          const data = summary.ticket.stores[s.nome_fantasia]
+                          return (
+                            <React.Fragment key={`ticket-${s.id}`}>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                -
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.diaVal ? formatCurrency(data.diaVal) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                                -
+                              </TableCell>
+                              <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                                {data.noiteVal ? formatCurrency(data.noiteVal) : '-'}
+                              </TableCell>
+                            </React.Fragment>
+                          )
+                        })}
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          -
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.ticket.totais.diaVal
+                            ? formatCurrency(summary.ticket.totais.diaVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-800 dark:text-rose-200/80">
+                          -
+                        </TableCell>
+                        <TableCell className="text-right border-r text-rose-900 dark:text-rose-100">
+                          {summary.ticket.totais.noiteVal
+                            ? formatCurrency(summary.ticket.totais.noiteVal)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100">
+                          -
+                        </TableCell>
+                        <TableCell className="text-right text-rose-900 dark:text-rose-100">
+                          {summary.ticket.totais.geralVal
+                            ? formatCurrency(summary.ticket.totais.geralVal)
+                            : '-'}
+                        </TableCell>
+                      </TableRow>
+                    </>
                   )}
                 </TableBody>
               </Table>

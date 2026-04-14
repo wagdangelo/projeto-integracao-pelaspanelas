@@ -266,6 +266,66 @@ export type Database = {
         }
         Relationships: []
       }
+      lojas: {
+        Row: {
+          cnpj: string | null
+          codigo_integracao: string | null
+          created_at: string | null
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_estado: string | null
+          endereco_numero: string | null
+          endereco_rua: string | null
+          id: string
+          nome_fantasia: string
+          plataforma: string | null
+          razao_social: string | null
+          senha_integracao: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          codigo_integracao?: string | null
+          created_at?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
+          id?: string
+          nome_fantasia: string
+          plataforma?: string | null
+          razao_social?: string | null
+          senha_integracao?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          codigo_integracao?: string | null
+          created_at?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
+          id?: string
+          nome_fantasia?: string
+          plataforma?: string | null
+          razao_social?: string | null
+          senha_integracao?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -763,6 +823,24 @@ export const Constants = {
 //   salario: text (nullable)
 //   vale_transporte: text (nullable)
 //   escala_turnos: jsonb (nullable)
+// Table: lojas
+//   id: uuid (not null, default: gen_random_uuid())
+//   nome_fantasia: text (not null)
+//   cnpj: text (nullable)
+//   razao_social: text (nullable)
+//   telefone: text (nullable)
+//   endereco_cep: text (nullable)
+//   endereco_rua: text (nullable)
+//   endereco_numero: text (nullable)
+//   endereco_complemento: text (nullable)
+//   endereco_bairro: text (nullable)
+//   endereco_cidade: text (nullable)
+//   endereco_estado: text (nullable)
+//   plataforma: text (nullable)
+//   codigo_integracao: text (nullable)
+//   senha_integracao: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: orders
 //   id: uuid (not null, default: gen_random_uuid())
 //   order_number: text (not null)
@@ -847,6 +925,9 @@ export const Constants = {
 // Table: funcionarios
 //   UNIQUE funcionarios_email_key: UNIQUE (email)
 //   PRIMARY KEY funcionarios_pkey: PRIMARY KEY (id)
+// Table: lojas
+//   UNIQUE lojas_cnpj_key: UNIQUE (cnpj)
+//   PRIMARY KEY lojas_pkey: PRIMARY KEY (id)
 // Table: orders
 //   PRIMARY KEY orders_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY orders_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
@@ -898,6 +979,10 @@ export const Constants = {
 //   Policy "authenticated_select_funcionarios" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 //   Policy "authenticated_update_funcionarios" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: lojas
+//   Policy "Enable ALL for authenticated users on lojas" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
 // Table: orders
@@ -1054,3 +1139,5 @@ export const Constants = {
 // --- INDEXES ---
 // Table: funcionarios
 //   CREATE UNIQUE INDEX funcionarios_email_key ON public.funcionarios USING btree (email)
+// Table: lojas
+//   CREATE UNIQUE INDEX lojas_cnpj_key ON public.lojas USING btree (cnpj)
