@@ -15,6 +15,7 @@ import { AdminRoute } from './components/AdminRoute'
 import BanksAdmin from './pages/admin/Banks'
 import ImportOfx from './pages/admin/ImportOfx'
 import ChartOfAccounts from './pages/admin/ChartOfAccounts'
+import StoresAdmin from './pages/admin/Stores'
 import CashFlow from './pages/CashFlow'
 import Clients from './pages/admin/Clients'
 import AccountsPayable from './pages/AccountsPayable'
@@ -153,6 +154,14 @@ const App = () => (
                 element={
                   <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
                     <ImportOfx />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="/admin/lojas"
+                element={
+                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                    <StoresAdmin />
                   </RoleGuard>
                 }
               />

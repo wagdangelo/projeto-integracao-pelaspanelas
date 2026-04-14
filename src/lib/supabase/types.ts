@@ -738,7 +738,7 @@ export const Constants = {
 //   updated_at: timestamp with time zone (nullable, default: now())
 // Table: entregas_lojas
 //   id: uuid (not null, default: gen_random_uuid())
-//   data: text (not null)
+//   data: timestamp without time zone (not null)
 //   turno: text (not null)
 //   loja: text (not null)
 //   quantidade: numeric (nullable, default: 0)

@@ -18,6 +18,10 @@ import {
   UserCog,
   Store,
   Clock,
+  Folder,
+  ChevronRight,
+  Package,
+  ShoppingCart,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -27,11 +31,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   SidebarGroup,
   SidebarGroupContent,
 } from '@/components/ui/sidebar'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { TransactionModal } from './TransactionModal'
@@ -50,7 +58,7 @@ export default function Layout() {
   }
 
   const role = user?.role || 'Cozinha'
-  const allNavItems = [
+  const mainNavItems = [
     {
       icon: Clock,
       label: 'Ponto',
@@ -85,10 +93,28 @@ export default function Layout() {
     { icon: Truck, label: 'Pedidos', path: '/pedidos', showFor: ['Admin', 'Adm', 'Gerente'] },
     { icon: Activity, label: 'Fluxo de caixa', path: '/fluxo-caixa', showFor: ['Admin', 'Adm'] },
     {
-      icon: Users,
-      label: 'Favorecidos',
-      path: '/favorecidos',
+      icon: PieChart,
+      label: 'Relatórios',
+      path: '/relatorios',
       showFor: ['Admin', 'Adm', 'Gerente'],
+    },
+  ].filter((item) => item.showFor.includes(role))
+
+  const cadastroItems = [
+    { icon: Store, label: 'Lojas', path: '/admin/lojas', showFor: ['Admin', 'Adm', 'Gerente'] },
+    {
+      icon: Package,
+      label: 'Insumos (em breve)',
+      path: '#',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+      disabled: true,
+    },
+    {
+      icon: ShoppingCart,
+      label: 'Produtos (em breve)',
+      path: '#',
+      showFor: ['Admin', 'Adm', 'Gerente'],
+      disabled: true,
     },
     {
       icon: Building2,
@@ -97,9 +123,9 @@ export default function Layout() {
       showFor: ['Admin', 'Adm', 'Gerente'],
     },
     {
-      icon: PieChart,
-      label: 'Relatórios',
-      path: '/relatorios',
+      icon: Users,
+      label: 'Favorecidos',
+      path: '/favorecidos',
       showFor: ['Admin', 'Adm', 'Gerente'],
     },
     {
@@ -114,9 +140,7 @@ export default function Layout() {
       path: '/admin/usuarios',
       showFor: ['Admin', 'Adm', 'Gerente', 'RH'],
     },
-  ].filter((item) => {
-    return item.showFor.includes(role)
-  })
+  ].filter((item) => item.showFor.includes(role))
 
   return (
     <SidebarProvider>
@@ -149,7 +173,7 @@ export default function Layout() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {allNavItems.map((item) => {
+                  {mainNavItems.map((item) => {
                     const isActive =
                       location.pathname === item.path ||
                       (item.path !== '/' && location.pathname.startsWith(item.path))
@@ -168,6 +192,52 @@ export default function Layout() {
                       </SidebarMenuItem>
                     )
                   })}
+
+                  {cadastroItems.length > 0 && (
+                    <Collapsible defaultOpen className="group/collapsible mt-4">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton className="h-11 rounded-xl text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all px-3 text-base font-medium">
+                            <Folder className="h-5 w-5" />
+                            <span>Cadastros</span>
+                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub className="pr-0 mr-0 mt-1 space-y-1">
+                            {cadastroItems.map((item) => {
+                              const isActive =
+                                location.pathname === item.path ||
+                                (item.path !== '/' && location.pathname.startsWith(item.path))
+                              return (
+                                <SidebarMenuSubItem key={item.label}>
+                                  {item.disabled ? (
+                                    <SidebarMenuSubButton className="text-muted-foreground/50 cursor-not-allowed h-10 rounded-xl px-3 text-sm">
+                                      <item.icon className="h-4 w-4" />
+                                      <span>{item.label}</span>
+                                    </SidebarMenuSubButton>
+                                  ) : (
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={isActive}
+                                      className={`h-10 rounded-xl transition-all duration-300 ease-in-out px-3 text-sm ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground hover:translate-x-1'}`}
+                                    >
+                                      <Link to={item.path}>
+                                        <item.icon
+                                          className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`}
+                                        />
+                                        <span>{item.label}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  )}
+                                </SidebarMenuSubItem>
+                              )
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
