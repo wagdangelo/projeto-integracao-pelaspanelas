@@ -104,7 +104,9 @@ export function StoreModal({ open, onOpenChange, store, onSaved }: StoreModalPro
             endereco_estado: data.uf || prev.endereco_estado,
           }))
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Erro ao buscar CEP:', e)
+      }
     }
   }
 
