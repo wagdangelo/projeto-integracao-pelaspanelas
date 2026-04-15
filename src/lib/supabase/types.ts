@@ -428,41 +428,58 @@ export type Database = {
       pontos: {
         Row: {
           criado_em: string | null
+          data: string | null
           data_hora: string | null
           entrada: string | null
           foto_url: string | null
           funcionario_id: string | null
+          horario: string | null
           id: string
           latitude: number | null
           longitude: number | null
+          status_validacao: string | null
           tipo_ponto: string | null
           wifi_conectado: boolean | null
         }
         Insert: {
           criado_em?: string | null
+          data?: string | null
           data_hora?: string | null
           entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
+          horario?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          status_validacao?: string | null
           tipo_ponto?: string | null
           wifi_conectado?: boolean | null
         }
         Update: {
           criado_em?: string | null
+          data?: string | null
           data_hora?: string | null
           entrada?: string | null
           foto_url?: string | null
           funcionario_id?: string | null
+          horario?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          status_validacao?: string | null
           tipo_ponto?: string | null
           wifi_conectado?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'pontos_funcionario_id_fkey'
+            columns: ['funcionario_id']
+            isOneToOne: false
+            referencedRelation: 'funcionarios'
+            referencedColumns: ['id']
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -879,6 +896,9 @@ export const Constants = {
 //   wifi_conectado: boolean (nullable)
 //   criado_em: timestamp with time zone (nullable)
 //   entrada: text (nullable)
+//   status_validacao: text (nullable, default: 'dentro_tolerancia'::text)
+//   data: date (nullable)
+//   horario: text (nullable)
 // Table: profiles
 //   id: uuid (not null)
 //   email: text (not null)
@@ -936,6 +956,7 @@ export const Constants = {
 // Table: payment_methods
 //   PRIMARY KEY payment_methods_pkey: PRIMARY KEY (id)
 // Table: pontos
+//   FOREIGN KEY pontos_funcionario_id_fkey: FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE
 //   PRIMARY KEY pontos_pkey: PRIMARY KEY (id)
 // Table: profiles
 //   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE

@@ -1,329 +1,173 @@
-import React, { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  ArrowRightLeft,
-  Activity,
-  PieChart,
-  LogOut,
-  Bell,
-  Search,
-  Plus,
-  Building2,
-  BookOpen,
-  Users,
-  Truck,
-  Receipt,
-  HandCoins,
-  UserCog,
-  Store,
-  Clock,
-  Folder,
-  ChevronRight,
-  Package,
-  ShoppingCart,
-} from 'lucide-react'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
-  SidebarGroup,
-  SidebarGroupContent,
+  SidebarHeader,
 } from '@/components/ui/sidebar'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { TransactionModal } from './TransactionModal'
 import { useAuth } from '@/hooks/use-auth'
-import { useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Receipt,
+  FileText,
+  ShoppingCart,
+  Users,
+  Building,
+  Building2,
+  Landmark,
+  Upload,
+  LogOut,
+  Clock,
+  ListTodo,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+const menuItems = [
+  { title: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['admin', 'gerente'] },
+  {
+    title: 'Meu Painel',
+    path: '/meu-painel',
+    icon: ListTodo,
+    roles: ['cozinha', 'administrativo', 'adm'],
+  },
+  {
+    title: 'Ponto',
+    path: '/ponto',
+    icon: Clock,
+    roles: ['admin', 'gerente', 'cozinha', 'administrativo', 'adm'],
+  },
+  {
+    title: 'Transações',
+    path: '/transacoes',
+    icon: Receipt,
+    roles: ['admin', 'gerente', 'administrativo', 'adm'],
+  },
+  {
+    title: 'Contas a Pagar',
+    path: '/contas-a-pagar',
+    icon: FileText,
+    roles: ['admin', 'gerente', 'administrativo', 'adm'],
+  },
+  {
+    title: 'Contas a Receber',
+    path: '/contas-a-receber',
+    icon: FileText,
+    roles: ['admin', 'gerente'],
+  },
+  {
+    title: 'Faturamento',
+    path: '/faturamento',
+    icon: Landmark,
+    roles: ['admin', 'gerente', 'administrativo', 'adm'],
+  },
+  {
+    title: 'Pedidos',
+    path: '/pedidos',
+    icon: ShoppingCart,
+    roles: ['admin', 'gerente', 'administrativo', 'adm'],
+  },
+  { title: 'Fluxo de Caixa', path: '/fluxo-caixa', icon: Landmark, roles: ['admin', 'gerente'] },
+  { title: 'Clientes/Favorecidos', path: '/favorecidos', icon: Users, roles: ['admin', 'gerente'] },
+  { title: 'Bancos', path: '/admin/bancos', icon: Building2, roles: ['admin', 'gerente'] },
+  { title: 'Lojas', path: '/admin/lojas', icon: Building, roles: ['admin', 'gerente'] },
+  {
+    title: 'Plano de Contas',
+    path: '/admin/plano-contas',
+    icon: FileText,
+    roles: ['admin', 'gerente'],
+  },
+  { title: 'Usuários', path: '/admin/usuarios', icon: Users, roles: ['admin', 'gerente', 'rh'] },
+  { title: 'Importar OFX', path: '/importacao', icon: Upload, roles: ['admin', 'gerente'] },
+]
 
 export default function Layout() {
-  const location = useLocation()
-  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
   const { user, signOut } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    signOut()
-    navigate('/login')
-  }
+  const role = user?.role?.toLowerCase() || ''
 
-  const role = user?.role || 'Cozinha'
-  const mainNavItems = [
-    {
-      icon: Clock,
-      label: 'Ponto',
-      path: '/ponto',
-      showFor: ['Admin', 'Adm', 'Gerente', 'Cozinha', 'RH'],
-    },
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/', showFor: ['Admin', 'Adm', 'Gerente'] },
-    {
-      icon: ArrowRightLeft,
-      label: 'Transações',
-      path: '/transacoes',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    {
-      icon: Receipt,
-      label: 'Contas a Pagar',
-      path: '/contas-a-pagar',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    {
-      icon: HandCoins,
-      label: 'Contas a Receber',
-      path: '/contas-a-receber',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    {
-      icon: Store,
-      label: 'Faturamento',
-      path: '/faturamento',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    { icon: Truck, label: 'Pedidos', path: '/pedidos', showFor: ['Admin', 'Adm', 'Gerente'] },
-    { icon: Activity, label: 'Fluxo de caixa', path: '/fluxo-caixa', showFor: ['Admin', 'Adm'] },
-    {
-      icon: PieChart,
-      label: 'Relatórios',
-      path: '/relatorios',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-  ].filter((item) => item.showFor.includes(role))
-
-  const cadastroItems = [
-    { icon: Store, label: 'Lojas', path: '/admin/lojas', showFor: ['Admin', 'Adm', 'Gerente'] },
-    {
-      icon: Package,
-      label: 'Insumos (em breve)',
-      path: '#',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-      disabled: true,
-    },
-    {
-      icon: ShoppingCart,
-      label: 'Produtos (em breve)',
-      path: '#',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-      disabled: true,
-    },
-    {
-      icon: Building2,
-      label: 'Bancos',
-      path: '/admin/bancos',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    {
-      icon: Users,
-      label: 'Favorecidos',
-      path: '/favorecidos',
-      showFor: ['Admin', 'Adm', 'Gerente'],
-    },
-    {
-      icon: BookOpen,
-      label: 'Plano de Contas',
-      path: '/admin/plano-contas',
-      showFor: ['Admin', 'Adm'],
-    },
-    {
-      icon: UserCog,
-      label: 'RH / Funcionários',
-      path: '/admin/usuarios',
-      showFor: ['Admin', 'Adm', 'Gerente', 'RH'],
-    },
-  ].filter((item) => item.showFor.includes(role))
+  const filteredMenu = menuItems.filter((item) => {
+    if (role === 'cozinha') {
+      return ['/meu-painel', '/ponto'].includes(item.path)
+    }
+    if (role === 'administrativo' || role === 'adm') {
+      return [
+        '/meu-painel',
+        '/ponto',
+        '/transacoes',
+        '/contas-a-pagar',
+        '/faturamento',
+        '/pedidos',
+      ].includes(item.path)
+    }
+    return item.roles.includes(role)
+  })
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background font-sans text-foreground">
-        <Sidebar className="border-r border-sidebar-border bg-sidebar" variant="sidebar">
-          <SidebarHeader className="p-6">
-            <div className="flex items-center gap-3 font-bold text-xl tracking-tight text-white">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="h-5 w-5 text-primary-foreground"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m2 7 4.5-4.5 4.5 4.5" />
-                  <path d="m2 17 4.5 4.5 4.5-4.5" />
-                  <path d="M6.5 2.5v19" />
-                  <path d="m13 17 4.5 4.5 4.5-4.5" />
-                  <path d="m13 7 4.5-4.5 4.5 4.5" />
-                  <path d="M17.5 2.5v19" />
-                </svg>
-              </div>
-              Pelas Panelas
-            </div>
+      <div className="flex min-h-screen w-full bg-background">
+        <Sidebar>
+          <SidebarHeader className="flex items-center justify-between p-4">
+            <h2 className="text-xl font-bold tracking-tight">Vast</h2>
           </SidebarHeader>
-          <SidebarContent className="px-3 pt-4">
+          <SidebarContent>
             <SidebarGroup>
+              <SidebarGroupLabel>Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {mainNavItems.map((item) => {
-                    const isActive =
-                      location.pathname === item.path ||
-                      (item.path !== '/' && location.pathname.startsWith(item.path))
-                    return (
-                      <SidebarMenuItem key={item.path} className="mb-1">
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          className={`h-11 rounded-xl transition-all duration-300 ease-in-out ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground hover:translate-x-1'}`}
-                        >
-                          <Link to={item.path} className="flex items-center gap-3 px-3 text-base">
-                            <item.icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )
-                  })}
-
-                  {cadastroItems.length > 0 && (
-                    <Collapsible defaultOpen className="group/collapsible mt-4">
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton className="h-11 rounded-xl text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all px-3 text-base font-medium">
-                            <Folder className="h-5 w-5" />
-                            <span>Cadastros</span>
-                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub className="pr-0 mr-0 mt-1 space-y-1">
-                            {cadastroItems.map((item) => {
-                              const isActive =
-                                location.pathname === item.path ||
-                                (item.path !== '/' && location.pathname.startsWith(item.path))
-                              return (
-                                <SidebarMenuSubItem key={item.label}>
-                                  {item.disabled ? (
-                                    <SidebarMenuSubButton className="text-muted-foreground/50 cursor-not-allowed h-10 rounded-xl px-3 text-sm">
-                                      <item.icon className="h-4 w-4" />
-                                      <span>{item.label}</span>
-                                    </SidebarMenuSubButton>
-                                  ) : (
-                                    <SidebarMenuSubButton
-                                      asChild
-                                      isActive={isActive}
-                                      className={`h-10 rounded-xl transition-all duration-300 ease-in-out px-3 text-sm ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground hover:translate-x-1'}`}
-                                    >
-                                      <Link to={item.path}>
-                                        <item.icon
-                                          className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`}
-                                        />
-                                        <span>{item.label}</span>
-                                      </Link>
-                                    </SidebarMenuSubButton>
-                                  )}
-                                </SidebarMenuSubItem>
-                              )
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  )}
+                  {filteredMenu.map((item) => (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton asChild isActive={location.pathname === item.path}>
+                        <Link to={item.path}>
+                          <item.icon className="mr-2 h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="p-4 mb-4">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={handleLogout}
-                  className="h-11 rounded-xl text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
-                >
-                  <LogOut className="mr-2 h-5 w-5" />
-                  <span>Sair</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
+          <div className="mt-auto p-4 border-t border-sidebar-border">
+            <Button
+              variant="outline"
+              className="w-full justify-start text-sidebar-foreground"
+              onClick={() => {
+                signOut()
+                navigate('/login')
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </Sidebar>
-
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border/40 bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="md:hidden" />
-              <div className="hidden flex-col md:flex animate-fade-in-right">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold tracking-tight">
-                    Olá, {user?.name?.split(' ')[0] || 'Usuário'}
-                  </h1>
-                  {user?.role && (
-                    <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">
-                      {user.role}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">Bem-vindo ao seu painel financeiro</p>
-              </div>
+        <main className="flex-1 flex flex-col h-screen overflow-hidden bg-background text-foreground">
+          <header className="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-muted/40 px-6 shrink-0">
+            <SidebarTrigger />
+            <div className="w-full flex-1">
+              <h1 className="font-semibold text-lg">
+                {filteredMenu.find((m) => m.path === location.pathname)?.title || 'Vast Dashboard'}
+              </h1>
             </div>
-
-            <div className="flex items-center gap-3 sm:gap-5">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground rounded-full hover:bg-white/5 hidden sm:flex"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-muted-foreground hover:text-foreground rounded-full hover:bg-white/5"
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-destructive border-2 border-background"></span>
-              </Button>
-
-              <Avatar className="h-9 w-9 border border-border cursor-pointer hover:opacity-80 transition-opacity">
-                <AvatarImage
-                  src="https://img.usecurling.com/ppl/thumbnail?gender=male&seed=12"
-                  alt="User"
-                />
-                <AvatarFallback>AL</AvatarFallback>
-              </Avatar>
-
-              <div className="h-6 w-px bg-border hidden sm:block mx-1" />
-
-              {/* Mobile primary action */}
-              {['Admin', 'Adm', 'Gerente'].includes(role) && (
-                <Button
-                  onClick={() => setIsTransactionModalOpen(true)}
-                  size="icon"
-                  className="sm:hidden rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-              )}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">{user?.name || user?.email}</span>
             </div>
           </header>
-
-          <div className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 animate-fade-in">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <Outlet />
           </div>
         </main>
       </div>
-
-      <TransactionModal open={isTransactionModalOpen} onOpenChange={setIsTransactionModalOpen} />
     </SidebarProvider>
   )
 }
