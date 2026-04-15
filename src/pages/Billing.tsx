@@ -3,12 +3,45 @@ import { useAuth } from '@/hooks/use-auth'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns'
+import {
+  format,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  addMonths,
+  subMonths,
+  isSameMonth,
+  isToday,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, Store, Save, Filter, Edit, Trash2, X } from 'lucide-react'
+import {
+  CalendarIcon,
+  Store,
+  Save,
+  Filter,
+  Edit,
+  Trash2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -95,6 +128,68 @@ export default function Billing() {
 
   const [editingRecord, setEditingRecord] = useState<EntregaLoja | null>(null)
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null)
+
+  const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()))
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+
+  const nextMonth = () => setCalendarMonth(addMonths(calendarMonth, 1))
+  const prevMonth = () => setCalendarMonth(subMonths(calendarMonth, 1))
+
+  const monthStart = startOfMonth(calendarMonth)
+  const monthEnd = endOfMonth(monthStart)
+  const startDate = startOfWeek(monthStart)
+  const endDate = endOfWeek(monthEnd)
+
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate })
+
+  const calendarData = useMemo(() => {
+    const data: Record<string, { faturamento: number; quantidade: number }> = {}
+
+    const relevantRecords = records.filter((r) => {
+      const matchStore = storeFilter === 'all' || r.loja === storeFilter
+      const matchShift = shiftFilter === 'all' || r.turno === shiftFilter
+      return matchStore && matchShift
+    })
+
+    relevantRecords.forEach((r) => {
+      const dStr = format(new Date(r.data), 'yyyy-MM-dd')
+      if (!data[dStr]) {
+        data[dStr] = { faturamento: 0, quantidade: 0 }
+      }
+      data[dStr].faturamento += r.faturamento
+      data[dStr].quantidade += r.quantidade
+    })
+
+    return data
+  }, [records, storeFilter, shiftFilter])
+
+  const groupedSelectedDayRecords = useMemo(() => {
+    if (!selectedDay) return []
+
+    const grouped: Record<
+      string,
+      { loja: string; turno: string; quantidade: number; faturamento: number }
+    > = {}
+
+    records.forEach((r) => {
+      const matchDate = format(new Date(r.data), 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd')
+      const matchStore = storeFilter === 'all' || r.loja === storeFilter
+      const matchShift = shiftFilter === 'all' || r.turno === shiftFilter
+
+      if (matchDate && matchStore && matchShift) {
+        const key = `${r.loja}-${r.turno}`
+        if (!grouped[key]) {
+          grouped[key] = { loja: r.loja, turno: r.turno, quantidade: 0, faturamento: 0 }
+        }
+        grouped[key].quantidade += r.quantidade
+        grouped[key].faturamento += r.faturamento
+      }
+    })
+
+    return Object.values(grouped).sort(
+      (a, b) => a.loja.localeCompare(b.loja) || a.turno.localeCompare(b.turno),
+    )
+  }, [selectedDay, records, storeFilter, shiftFilter])
 
   const loadData = async () => {
     try {
@@ -680,6 +775,84 @@ export default function Billing() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle>Calendário de Faturamento</CardTitle>
+            <CardDescription>Visão diária do faturamento e pedidos.</CardDescription>
+          </div>
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+            <Button variant="outline" size="icon" onClick={prevMonth}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-semibold min-w-[140px] text-center capitalize">
+              {format(calendarMonth, 'MMMM yyyy', { locale: ptBR })}
+            </span>
+            <Button variant="outline" size="icon" onClick={nextMonth}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-px bg-border rounded-md overflow-hidden border">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dayName) => (
+              <div
+                key={dayName}
+                className="bg-muted/50 p-2 text-center text-xs font-semibold uppercase tracking-wider"
+              >
+                {dayName}
+              </div>
+            ))}
+            {calendarDays.map((day) => {
+              const dStr = format(day, 'yyyy-MM-dd')
+              const metrics = calendarData[dStr]
+              const isCurrentMonth = isSameMonth(day, calendarMonth)
+
+              return (
+                <div
+                  key={day.toString()}
+                  className={cn(
+                    'bg-background p-1 sm:p-2 min-h-[100px] flex flex-col cursor-pointer hover:bg-muted/50 transition-colors relative group',
+                    !isCurrentMonth && 'text-muted-foreground opacity-60 bg-muted/20',
+                    isToday(day) && 'ring-2 ring-primary ring-inset z-10',
+                  )}
+                  onClick={() => setSelectedDay(day)}
+                >
+                  <div
+                    className={cn(
+                      'font-semibold text-xs sm:text-sm mb-1 sm:mb-2 w-6 h-6 flex items-center justify-center rounded-full',
+                      isToday(day) && 'bg-primary text-primary-foreground',
+                    )}
+                  >
+                    {format(day, 'd')}
+                  </div>
+                  {metrics && metrics.quantidade > 0 && (
+                    <div className="flex flex-col gap-1 text-[10px] sm:text-xs mt-auto">
+                      <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 px-1 py-0.5 rounded">
+                        <span className="hidden sm:inline">R$</span>
+                        <span>{formatCurrency(metrics.faturamento).replace('R$', '').trim()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-primary bg-primary/10 px-1 py-0.5 rounded">
+                        <span className="hidden sm:inline">Qtd</span>
+                        <span>{metrics.quantidade}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-muted-foreground bg-muted px-1 py-0.5 rounded">
+                        <span className="hidden sm:inline">TM</span>
+                        <span>
+                          {formatCurrency(metrics.faturamento / metrics.quantidade)
+                            .replace('R$', '')
+                            .trim()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {isAdminOrManager && (
         <Card>
           <CardHeader>
@@ -972,6 +1145,62 @@ export default function Billing() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Detalhamento - {selectedDay ? format(selectedDay, 'dd/MM/yyyy') : ''}
+            </DialogTitle>
+            <DialogDescription>Faturamento detalhado por loja e turno.</DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Turno</TableHead>
+                  <TableHead className="text-right">Pedidos</TableHead>
+                  <TableHead className="text-right">Faturamento</TableHead>
+                  <TableHead className="text-right">Ticket Médio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {groupedSelectedDayRecords.length > 0 ? (
+                  groupedSelectedDayRecords.map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{r.loja}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{r.turno}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{r.quantidade}</TableCell>
+                      <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(r.faturamento)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(r.quantidade > 0 ? r.faturamento / r.quantidade : 0)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      Nenhum registro encontrado para este dia nos filtros atuais.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedDay(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!deletingRecordId}
