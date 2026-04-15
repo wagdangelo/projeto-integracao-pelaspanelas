@@ -31,6 +31,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!session) {
         setUser(null)
         setLoading(false)
+      } else if (event === 'SIGNED_IN') {
+        setLoading(true)
       }
     })
 
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (session?.user) {
+      setLoading(true)
       supabase
         .from('funcionarios')
         .select('*')
