@@ -154,7 +154,9 @@ export default function Ponto() {
         if (typeof escala === 'string') {
           try {
             escala = JSON.parse(escala)
-          } catch (e) {}
+          } catch (e) {
+            /* ignore parse error */
+          }
         }
 
         const horarioEsperadoStr = escala?.[hoje] || user?.turno
