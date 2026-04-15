@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
@@ -31,6 +31,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, hasClockedInToday } = useAuth()
   const alertsChecked = useRef(false)
+  const location = useLocation()
 
   useEffect(() => {
     if (
@@ -68,7 +69,7 @@ const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
   const role = user?.role?.toLowerCase() || ''
   const requiresClockIn = ['cozinha', 'administrativo', 'adm'].includes(role)
 
-  if (requiresClockIn && !hasClockedInToday) {
+  if (requiresClockIn && !hasClockedInToday && location.pathname !== '/ponto') {
     return <Navigate to="/ponto" replace />
   }
 
@@ -87,12 +88,13 @@ const RoleGuard = ({
   allowedRoles: string[]
 }) => {
   const { user, loading, hasClockedInToday } = useAuth()
+  const location = useLocation()
   if (loading) return null
 
   const role = user?.role?.toLowerCase() || ''
   const requiresClockIn = ['cozinha', 'administrativo', 'adm'].includes(role)
 
-  if (requiresClockIn && !hasClockedInToday) {
+  if (requiresClockIn && !hasClockedInToday && location.pathname !== '/ponto') {
     return <Navigate to="/ponto" replace />
   }
 
@@ -121,7 +123,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route path="/ponto" element={<Ponto />} />
+              <Route
+                path="/ponto"
+                element={
+                  <RoleGuard allowedRoles={['admin', 'cozinha', 'administrativo', 'adm']}>
+                    <Ponto />
+                  </RoleGuard>
+                }
+              />
               <Route
                 path="/"
                 element={
@@ -173,7 +182,7 @@ const App = () => (
               <Route
                 path="/contas-a-receber"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <AccountsReceivable />
                   </RoleGuard>
                 }
@@ -181,7 +190,7 @@ const App = () => (
               <Route
                 path="/fluxo-caixa"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <CashFlow />
                   </RoleGuard>
                 }
@@ -197,7 +206,7 @@ const App = () => (
               <Route
                 path="/fornecedores"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <Index />
                   </RoleGuard>
                 }
@@ -205,7 +214,7 @@ const App = () => (
               <Route
                 path="/relatorios"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <Index />
                   </RoleGuard>
                 }
@@ -213,7 +222,7 @@ const App = () => (
               <Route
                 path="/admin/bancos"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <BanksAdmin />
                   </RoleGuard>
                 }
@@ -221,7 +230,7 @@ const App = () => (
               <Route
                 path="/importacao"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente']}>
+                  <RoleGuard allowedRoles={['admin']}>
                     <ImportOfx />
                   </RoleGuard>
                 }
@@ -245,7 +254,7 @@ const App = () => (
               <Route
                 path="/admin/usuarios"
                 element={
-                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm', 'rh']}>
+                  <RoleGuard allowedRoles={['admin', 'administrativo', 'adm', 'rh']}>
                     <UsersAdmin />
                   </RoleGuard>
                 }

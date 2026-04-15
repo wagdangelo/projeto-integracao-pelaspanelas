@@ -69,7 +69,7 @@ export default function Login() {
         description: 'Login realizado com sucesso.',
       })
       setTimeout(() => {
-        navigate('/ponto')
+        navigate('/')
       }, 0)
     }
   }
@@ -121,7 +121,7 @@ export default function Login() {
       if (signInError) throw signInError
 
       setTimeout(() => {
-        navigate('/ponto')
+        navigate('/')
       }, 0)
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })

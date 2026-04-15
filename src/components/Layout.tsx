@@ -41,7 +41,7 @@ const menuItems = [
     title: 'Ponto',
     path: '/ponto',
     icon: Clock,
-    roles: ['admin', 'gerente', 'cozinha', 'administrativo', 'adm'],
+    roles: ['admin', 'cozinha', 'administrativo', 'adm'],
   },
   {
     title: 'Transações',
@@ -59,7 +59,7 @@ const menuItems = [
     title: 'Contas a Receber',
     path: '/contas-a-receber',
     icon: FileText,
-    roles: ['admin', 'gerente'],
+    roles: ['admin'],
   },
   {
     title: 'Faturamento',
@@ -73,9 +73,9 @@ const menuItems = [
     icon: ShoppingCart,
     roles: ['admin', 'gerente', 'administrativo', 'adm'],
   },
-  { title: 'Fluxo de Caixa', path: '/fluxo-caixa', icon: Landmark, roles: ['admin', 'gerente'] },
+  { title: 'Fluxo de Caixa', path: '/fluxo-caixa', icon: Landmark, roles: ['admin'] },
   { title: 'Clientes/Favorecidos', path: '/favorecidos', icon: Users, roles: ['admin', 'gerente'] },
-  { title: 'Bancos', path: '/admin/bancos', icon: Building2, roles: ['admin', 'gerente'] },
+  { title: 'Bancos', path: '/admin/bancos', icon: Building2, roles: ['admin'] },
   { title: 'Lojas', path: '/admin/lojas', icon: Building, roles: ['admin', 'gerente'] },
   {
     title: 'Plano de Contas',
@@ -83,8 +83,8 @@ const menuItems = [
     icon: FileText,
     roles: ['admin', 'gerente'],
   },
-  { title: 'Usuários', path: '/admin/usuarios', icon: Users, roles: ['admin', 'gerente', 'rh'] },
-  { title: 'Importar OFX', path: '/importacao', icon: Upload, roles: ['admin', 'gerente'] },
+  { title: 'Usuários', path: '/admin/usuarios', icon: Users, roles: ['admin', 'rh'] },
+  { title: 'Importar OFX', path: '/importacao', icon: Upload, roles: ['admin'] },
 ]
 
 export default function Layout() {
