@@ -162,11 +162,9 @@ export function EmployeeFormModal({ open, onOpenChange, initialData, onSave, isS
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Adm">Adm</SelectItem>
                       <SelectItem value="Gerente">Gerente</SelectItem>
-                      <SelectItem value="RH">RH</SelectItem>
                       <SelectItem value="Cozinha">Cozinha</SelectItem>
-                      <SelectItem value="Colaborador">Colaborador</SelectItem>
+                      <SelectItem value="Administrativo">Administrativo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
