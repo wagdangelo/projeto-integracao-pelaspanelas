@@ -7,26 +7,10 @@ import { MapPin, Camera, CheckCircle2, Clock, ArrowRight } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 
-// Mock Company Location for 50m radius check
-const COMPANY_LOCATION = { lat: -23.5505, lng: -46.6333 }
-const MAX_DISTANCE_METERS = 50
-
-function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3 // Radius of the earth in m
-  const dLat = (lat2 - lat1) * (Math.PI / 180)
-  const dLon = (lon2 - lon1) * (Math.PI / 180)
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
+type TipoPonto = 'Entrada' | 'Saída Almoço' | 'Retorno Almoço' | 'Saída Final' | 'Completo'
 
 export default function Ponto() {
-  const { user } = useAuth()
+  const { user, checkClockIn } = useAuth()
   const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -35,8 +19,8 @@ export default function Ponto() {
     'idle',
   )
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-
-  const { checkClockIn } = useAuth()
+  const [nextAction, setNextAction] = useState<TipoPonto>('Entrada')
+  const [isLoadingState, setIsLoadingState] = useState(true)
 
   const role = user?.role?.toLowerCase() || ''
   const hasFinanceiroAccess = ['admin', 'gerente', 'administrativo', 'adm'].includes(role)
@@ -46,47 +30,36 @@ export default function Ponto() {
     return () => clearInterval(timer)
   }, [])
 
-  const startProcess = () => {
-    if (user?.turno) {
-      const timeMatch = user.turno.match(/(\d{2}):(\d{2})/)
-      if (timeMatch) {
-        const [_, hourStr, minuteStr] = timeMatch
-        const escalaHour = parseInt(hourStr, 10)
-        const escalaMinute = parseInt(minuteStr, 10)
+  useEffect(() => {
+    if (user?.id) {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
 
-        const now = new Date()
-        const currentHour = now.getHours()
-        const currentMinute = now.getMinutes()
-        const currentTotalMinutes = currentHour * 60 + currentMinute
-        let escalaTotalMinutes = escalaHour * 60 + escalaMinute
-
-        if (
-          escalaTotalMinutes < currentTotalMinutes &&
-          currentTotalMinutes - escalaTotalMinutes > 12 * 60
-        ) {
-          escalaTotalMinutes += 24 * 60
-        }
-
-        const minTotalMinutes = escalaTotalMinutes - 20
-
-        if (currentTotalMinutes < minTotalMinutes || currentTotalMinutes > escalaTotalMinutes) {
-          const formatTime = (totalMins: number) => {
-            const normalizedMins = totalMins >= 24 * 60 ? totalMins - 24 * 60 : totalMins
-            const h = Math.floor(normalizedMins / 60)
-              .toString()
-              .padStart(2, '0')
-            const m = (normalizedMins % 60).toString().padStart(2, '0')
-            return `${h}:${m}`
+      supabase
+        .from('pontos')
+        .select('tipo_ponto')
+        .eq('funcionario_id', user.id)
+        .gte('data_hora', todayStart.toISOString())
+        .then(({ data }) => {
+          if (data) {
+            const types = data.map((d: any) => d.tipo_ponto)
+            if (!types.includes('Entrada')) setNextAction('Entrada')
+            else if (!types.includes('Saída Almoço')) setNextAction('Saída Almoço')
+            else if (!types.includes('Retorno Almoço')) setNextAction('Retorno Almoço')
+            else if (!types.includes('Saída Final')) setNextAction('Saída Final')
+            else setNextAction('Completo')
           }
+          setIsLoadingState(false)
+        })
+    } else {
+      setIsLoadingState(false)
+    }
+  }, [user?.id])
 
-          toast({
-            title: 'Fora do horário',
-            description: `Você só pode bater ponto entre ${formatTime(minTotalMinutes)} e ${formatTime(escalaTotalMinutes)}`,
-            variant: 'destructive',
-          })
-          return
-        }
-      }
+  const startProcess = () => {
+    if (nextAction === 'Completo') {
+      toast({ title: 'Aviso', description: 'Você já registrou todos os pontos de hoje.' })
+      return
     }
 
     setStatus('locating')
@@ -104,16 +77,6 @@ export default function Ponto() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords
-        const distance = getDistanceFromLatLonInM(
-          latitude,
-          longitude,
-          COMPANY_LOCATION.lat,
-          COMPANY_LOCATION.lng,
-        )
-
-        console.log(`Distância registrada: ${Math.round(distance)}m`)
-        // Mock success for all distances in this demo, real implementation would block if > MAX_DISTANCE_METERS
-
         setLocation({ lat: latitude, lng: longitude })
         setStatus('camera')
         startCamera()
@@ -141,7 +104,7 @@ export default function Ponto() {
       toast({
         title: 'Aviso',
         description:
-          'Câmera não encontrada ou permissão negada. Você ainda pode registrar o ponto em modo restrito.',
+          'Câmera não encontrada ou permissão negada. Você ainda pode registrar o ponto.',
       })
     }
   }
@@ -172,16 +135,57 @@ export default function Ponto() {
 
     try {
       const now = new Date()
+      const year = now.getFullYear()
+      const month = (now.getMonth() + 1).toString().padStart(2, '0')
+      const day = now.getDate().toString().padStart(2, '0')
+      const dataStr = `${year}-${month}-${day}`
+
       const horas = now.getHours().toString().padStart(2, '0')
       const minutos = now.getMinutes().toString().padStart(2, '0')
-      const entrada = `${horas}:${minutos}`
+      const horario = `${horas}:${minutos}`
+
+      let statusValidacao = 'dentro_tolerancia'
+
+      if (nextAction === 'Entrada') {
+        const diasSemana = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
+        const hoje = diasSemana[now.getDay()]
+
+        let escala = user?.escala_turnos
+        if (typeof escala === 'string') {
+          try {
+            escala = JSON.parse(escala)
+          } catch (e) {}
+        }
+
+        const horarioEsperadoStr = escala?.[hoje] || user?.turno
+
+        if (horarioEsperadoStr) {
+          const timeMatch = horarioEsperadoStr.match(/(\d{2}):(\d{2})/)
+          if (timeMatch) {
+            const [_, hourStr, minuteStr] = timeMatch
+            const expectedTotalMins = parseInt(hourStr, 10) * 60 + parseInt(minuteStr, 10)
+            const currentTotalMins = now.getHours() * 60 + now.getMinutes()
+
+            let diff = currentTotalMins - expectedTotalMins
+            if (diff < -12 * 60) diff += 24 * 60
+            if (diff > 12 * 60) diff -= 24 * 60
+
+            if (Math.abs(diff) > 15) {
+              statusValidacao = 'fora_tolerancia'
+            }
+          }
+        }
+      }
 
       const payload = {
         funcionario_id: user?.id,
-        tipo_ponto: 'Entrada',
+        tipo_ponto: nextAction,
         data_hora: now.toISOString(),
+        data: dataStr,
+        horario,
+        status_validacao: statusValidacao,
         criado_em: now.toISOString(),
-        entrada,
+        entrada: horario, // legacy compat
         latitude: location?.lat,
         longitude: location?.lng,
         foto_url: photoBase64,
@@ -195,8 +199,17 @@ export default function Ponto() {
       await checkClockIn()
 
       setStatus('success')
-      toast({ title: 'Ponto registrado', description: 'Seu ponto foi registrado com sucesso!' })
+      toast({
+        title: 'Ponto registrado',
+        description: `Seu registro de ${nextAction} foi salvo com sucesso!`,
+      })
+
+      if (nextAction === 'Entrada') setNextAction('Saída Almoço')
+      else if (nextAction === 'Saída Almoço') setNextAction('Retorno Almoço')
+      else if (nextAction === 'Retorno Almoço') setNextAction('Saída Final')
+      else if (nextAction === 'Saída Final') setNextAction('Completo')
     } catch (err) {
+      console.error(err)
       toast({
         title: 'Erro',
         description: 'Erro ao registrar ponto no sistema.',
@@ -207,8 +220,16 @@ export default function Ponto() {
     }
   }
 
+  if (isLoadingState) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 p-4">
       <Card className="border-border/50 shadow-lg bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-3xl font-bold flex items-center justify-center gap-2">
@@ -216,7 +237,9 @@ export default function Ponto() {
             Registro de Ponto
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Confirme sua localização e tire uma foto para registrar.
+            {nextAction === 'Completo'
+              ? 'Você já completou todos os registros de hoje.'
+              : `Próximo registro: ${nextAction}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8 pt-4">
@@ -234,13 +257,25 @@ export default function Ponto() {
             </div>
           </div>
 
-          {status === 'idle' && (
+          {status === 'idle' && nextAction !== 'Completo' && (
             <Button
               size="lg"
               className="w-full h-16 text-xl font-semibold shadow-md transition-transform hover:scale-[1.02]"
               onClick={startProcess}
             >
-              Iniciar Registro
+              Registrar {nextAction}
+            </Button>
+          )}
+
+          {status === 'idle' && nextAction === 'Completo' && hasFinanceiroAccess && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-16 text-lg font-semibold group mt-4"
+              onClick={() => navigate('/')}
+            >
+              Ir para o Sistema
+              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           )}
 
@@ -256,7 +291,7 @@ export default function Ponto() {
           )}
 
           {(status === 'camera' || status === 'registering') && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 animate-in fade-in zoom-in duration-300">
               <div className="relative aspect-[4/3] bg-black rounded-xl overflow-hidden flex items-center justify-center shadow-inner border border-border/50">
                 <video
                   ref={videoRef}
@@ -274,20 +309,34 @@ export default function Ponto() {
                   </div>
                 )}
               </div>
-              <Button
-                size="lg"
-                className="w-full h-16 text-xl font-semibold shadow-md transition-transform hover:scale-[1.02]"
-                onClick={registerPonto}
-                disabled={status === 'registering'}
-              >
-                <Camera className="w-6 h-6 mr-3" />
-                {status === 'registering' ? 'Aguarde...' : 'Fotografar e Registrar'}
-              </Button>
+              <div className="flex gap-4">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-1/3 h-16"
+                  onClick={() => {
+                    stopCamera()
+                    setStatus('idle')
+                  }}
+                  disabled={status === 'registering'}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="lg"
+                  className="w-2/3 h-16 text-xl font-semibold shadow-md"
+                  onClick={registerPonto}
+                  disabled={status === 'registering'}
+                >
+                  <Camera className="w-6 h-6 mr-3" />
+                  Confirmar {nextAction}
+                </Button>
+              </div>
             </div>
           )}
 
           {status === 'success' && (
-            <div className="flex flex-col items-center justify-center py-8 space-y-8 animate-fade-in-up">
+            <div className="flex flex-col items-center justify-center py-8 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
               <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center animate-bounce">
                 <CheckCircle2 className="w-12 h-12 text-green-500" />
               </div>
@@ -296,16 +345,28 @@ export default function Ponto() {
                 <p className="text-muted-foreground text-lg">Seu registro foi salvo com sucesso.</p>
               </div>
 
-              {hasFinanceiroAccess && (
-                <Button
-                  size="lg"
-                  className="w-full h-16 text-lg font-semibold group mt-4"
-                  onClick={() => navigate('/')}
-                >
-                  Ir para Financeiro
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              )}
+              <div className="flex gap-4 w-full">
+                {nextAction !== 'Completo' && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full h-16 text-lg font-semibold"
+                    onClick={() => setStatus('idle')}
+                  >
+                    Novo Registro
+                  </Button>
+                )}
+                {hasFinanceiroAccess && (
+                  <Button
+                    size="lg"
+                    className="w-full h-16 text-lg font-semibold group"
+                    onClick={() => navigate('/')}
+                  >
+                    Ir para Sistema
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -26,6 +29,39 @@ import { ThemeProvider } from './contexts/ThemeContext'
 
 const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, hasClockedInToday } = useAuth()
+  const alertsChecked = useRef(false)
+
+  useEffect(() => {
+    if (
+      !loading &&
+      user &&
+      ['admin', 'gerente'].includes(user.role?.toLowerCase() || '') &&
+      !alertsChecked.current
+    ) {
+      alertsChecked.current = true
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      supabase
+        .from('pontos')
+        .select('*, funcionarios(nome)')
+        .eq('status_validacao', 'fora_tolerancia')
+        .gte('data_hora', today.toISOString())
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            data.forEach((ponto: any) => {
+              toast({
+                title: 'Alerta de Ponto',
+                description: `${ponto.funcionarios?.nome || 'Funcionário'} registrou ${ponto.tipo_ponto} fora do horário esperado (${ponto.horario}).`,
+                variant: 'destructive',
+                duration: 10000,
+              })
+            })
+          }
+        })
+    }
+  }, [loading, user])
+
   if (loading) return null
 
   const role = user?.role?.toLowerCase() || ''
