@@ -36,7 +36,10 @@ export default function Ponto() {
   )
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-  const hasFinanceiroAccess = ['Admin', 'Adm', 'Gerente'].includes(user?.role || '')
+  const { checkClockIn } = useAuth()
+
+  const role = user?.role?.toLowerCase() || ''
+  const hasFinanceiroAccess = ['admin', 'gerente', 'administrativo', 'adm'].includes(role)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -188,6 +191,8 @@ export default function Ponto() {
       const { error } = await supabase.from('pontos').insert(payload)
 
       if (error) throw error
+
+      await checkClockIn()
 
       setStatus('success')
       toast({ title: 'Ponto registrado', description: 'Seu ponto foi registrado com sucesso!' })

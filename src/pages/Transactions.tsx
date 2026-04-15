@@ -70,7 +70,9 @@ export default function Transactions() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [limit, setLimit] = useState<string>('20')
 
-  const isAdmin = user?.role === 'Admin'
+  const role = user?.role?.toLowerCase() || ''
+  const isAdmin = role === 'admin'
+  const isAdministrativo = ['administrativo', 'adm'].includes(role)
 
   const loadData = async () => {
     if (!user) return
@@ -150,6 +152,7 @@ export default function Transactions() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
+      if (isAdministrativo && tx.user_id !== user.id) return false
       if (filterType !== 'all' && tx.type !== filterType) return false
       if (filterStatus !== 'all' && tx.status !== filterStatus) return false
       if (filterAccount !== 'all' && tx.account_id !== filterAccount) return false

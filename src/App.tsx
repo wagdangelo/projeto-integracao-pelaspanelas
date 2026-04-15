@@ -25,9 +25,20 @@ import Orders from './pages/Orders'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 const DashboardGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth()
+  const { user, loading, hasClockedInToday } = useAuth()
   if (loading) return null
-  if (['Cozinha', 'RH'].includes(user?.role || '')) return <Navigate to="/ponto" replace />
+
+  const role = user?.role?.toLowerCase() || ''
+  const requiresClockIn = ['cozinha', 'administrativo', 'adm'].includes(role)
+
+  if (requiresClockIn && !hasClockedInToday) {
+    return <Navigate to="/ponto" replace />
+  }
+
+  if (role === 'cozinha') {
+    return <Navigate to="/ponto" replace />
+  }
+
   return <div className="contents">{children}</div>
 }
 
@@ -38,9 +49,22 @@ const RoleGuard = ({
   children: React.ReactNode
   allowedRoles: string[]
 }) => {
-  const { user, loading } = useAuth()
+  const { user, loading, hasClockedInToday } = useAuth()
   if (loading) return null
-  if (!allowedRoles.includes(user?.role || '')) return <Navigate to="/ponto" replace />
+
+  const role = user?.role?.toLowerCase() || ''
+  const requiresClockIn = ['cozinha', 'administrativo', 'adm'].includes(role)
+
+  if (requiresClockIn && !hasClockedInToday) {
+    return <Navigate to="/ponto" replace />
+  }
+
+  const isAllowed = allowedRoles.some((r) => r.toLowerCase() === role)
+  if (!isAllowed) {
+    if (role === 'cozinha') return <Navigate to="/ponto" replace />
+    return <Navigate to="/" replace />
+  }
+
   return <div className="contents">{children}</div>
 }
 
@@ -72,7 +96,7 @@ const App = () => (
               <Route
                 path="/transacoes"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Transactions />
                   </RoleGuard>
                 }
@@ -80,7 +104,7 @@ const App = () => (
               <Route
                 path="/faturamento"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Billing />
                   </RoleGuard>
                 }
@@ -88,7 +112,7 @@ const App = () => (
               <Route
                 path="/pedidos"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Orders />
                   </RoleGuard>
                 }
@@ -96,7 +120,7 @@ const App = () => (
               <Route
                 path="/contas-a-pagar"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <AccountsPayable />
                   </RoleGuard>
                 }
@@ -104,7 +128,7 @@ const App = () => (
               <Route
                 path="/contas-a-receber"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <AccountsReceivable />
                   </RoleGuard>
                 }
@@ -112,7 +136,7 @@ const App = () => (
               <Route
                 path="/fluxo-caixa"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <CashFlow />
                   </RoleGuard>
                 }
@@ -120,7 +144,7 @@ const App = () => (
               <Route
                 path="/favorecidos"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Clients />
                   </RoleGuard>
                 }
@@ -128,7 +152,7 @@ const App = () => (
               <Route
                 path="/fornecedores"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Index />
                   </RoleGuard>
                 }
@@ -136,7 +160,7 @@ const App = () => (
               <Route
                 path="/relatorios"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <Index />
                   </RoleGuard>
                 }
@@ -144,7 +168,7 @@ const App = () => (
               <Route
                 path="/admin/bancos"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <BanksAdmin />
                   </RoleGuard>
                 }
@@ -152,7 +176,7 @@ const App = () => (
               <Route
                 path="/importacao"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <ImportOfx />
                   </RoleGuard>
                 }
@@ -160,7 +184,7 @@ const App = () => (
               <Route
                 path="/admin/lojas"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <StoresAdmin />
                   </RoleGuard>
                 }
@@ -168,7 +192,7 @@ const App = () => (
               <Route
                 path="/admin/plano-contas"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm']}>
                     <ChartOfAccounts />
                   </RoleGuard>
                 }
@@ -176,7 +200,7 @@ const App = () => (
               <Route
                 path="/admin/usuarios"
                 element={
-                  <RoleGuard allowedRoles={['Admin', 'Adm', 'Gerente', 'RH']}>
+                  <RoleGuard allowedRoles={['admin', 'gerente', 'administrativo', 'adm', 'rh']}>
                     <UsersAdmin />
                   </RoleGuard>
                 }

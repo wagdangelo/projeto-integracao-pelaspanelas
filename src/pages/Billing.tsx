@@ -117,7 +117,8 @@ const formSchema = z.object({
 
 export default function Billing() {
   const { user } = useAuth()
-  const isAdminOrManager = user?.role === 'Admin' || user?.role === 'Gerente'
+  const role = user?.role?.toLowerCase() || ''
+  const isAdminOrManager = ['admin', 'gerente'].includes(role)
 
   const [records, setRecords] = useState<EntregaLoja[]>([])
   const [stores, setStores] = useState<{ id: string; nome_fantasia: string }[]>([])
@@ -197,7 +198,13 @@ export default function Billing() {
         getEntregasLojas(),
         supabase.from('lojas').select('id, nome_fantasia').order('nome_fantasia'),
       ])
-      setRecords(entregasData)
+
+      let finalRecords = entregasData
+      if (['administrativo', 'adm'].includes(role)) {
+        finalRecords = finalRecords.filter((r) => r.user_id === user?.id)
+      }
+
+      setRecords(finalRecords)
       if (lojasData.data) {
         setStores(lojasData.data)
       }

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
@@ -8,6 +8,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => void
   loading: boolean
+  hasClockedInToday: boolean
+  checkClockIn: (userId?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -22,6 +24,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasClockedInToday, setHasClockedInToday] = useState(false)
+
+  const checkClockIn = useCallback(
+    async (userId?: string) => {
+      const targetUserId = userId || user?.id
+      if (!targetUserId) return
+
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { data } = await supabase
+        .from('pontos')
+        .select('id')
+        .eq('funcionario_id', targetUserId)
+        .eq('tipo_ponto', 'Entrada')
+        .gte('data_hora', todayStart.toISOString())
+        .limit(1)
+
+      setHasClockedInToday(!!(data && data.length > 0))
+    },
+    [user?.id],
+  )
 
   useEffect(() => {
     const {
@@ -30,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session)
       if (!session) {
         setUser(null)
+        setHasClockedInToday(false)
         setLoading(false)
       } else if (event === 'SIGNED_IN') {
         setLoading(true)
@@ -40,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session)
       if (!session) {
         setUser(null)
+        setHasClockedInToday(false)
         setLoading(false)
       }
     })
@@ -55,20 +81,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .select('*')
         .eq('email', session.user.email)
         .single()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
+          let currentUser
           if (data) {
-            setUser({ ...session.user, ...data, role: data.role || 'Cozinha' })
+            currentUser = { ...session.user, ...data, role: data.role || 'Cozinha' }
           } else {
-            setUser({ ...session.user, role: 'Cozinha' })
+            currentUser = { ...session.user, role: 'Cozinha' }
           }
+          setUser(currentUser)
+
+          const role = currentUser.role?.toLowerCase() || ''
+          if (['cozinha', 'administrativo', 'adm'].includes(role)) {
+            await checkClockIn(currentUser.id)
+          } else {
+            setHasClockedInToday(true)
+          }
+
           setLoading(false)
         })
         .catch(() => {
-          setUser({ ...session.user, role: 'Cozinha' })
+          const currentUser = { ...session.user, role: 'Cozinha' }
+          setUser(currentUser)
+          setHasClockedInToday(false)
           setLoading(false)
         })
     }
-  }, [session?.user?.id, session?.user?.email])
+  }, [session?.user?.id, session?.user?.email, checkClockIn])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -79,10 +117,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
+    setHasClockedInToday(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{ user, session, signIn, signOut, loading, hasClockedInToday, checkClockIn }}
+    >
       {children}
     </AuthContext.Provider>
   )

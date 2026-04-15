@@ -222,7 +222,13 @@ export default function AccountsPayable() {
       }
 
       const filterStr = filters.join(' && ')
-      const data = await getAccountsPayable(user.id, filterStr)
+      let data = await getAccountsPayable(user.id, filterStr)
+
+      const role = user?.role?.toLowerCase() || ''
+      if (['administrativo', 'adm'].includes(role)) {
+        data = data.filter((tx: any) => tx.user_id === user.id)
+      }
+
       setTransactions(data)
     } catch (error) {
       console.error('Error loading accounts payable:', error)

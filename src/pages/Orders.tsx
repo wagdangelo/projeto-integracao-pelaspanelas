@@ -64,12 +64,19 @@ export default function Orders() {
   const { toast } = useToast()
   const { user } = useAuth()
 
-  const isManagerOrAdmin = (user as any)?.role === 'Admin' || (user as any)?.role === 'Gerente'
+  const role = (user as any)?.role?.toLowerCase() || ''
+  const isManagerOrAdmin = ['admin', 'gerente'].includes(role)
 
   const fetchOrders = useCallback(async () => {
     try {
       const data = await ordersService.getOrders()
-      setOrders(data)
+
+      let finalOrders = data
+      if (['administrativo', 'adm'].includes(role)) {
+        finalOrders = finalOrders.filter((o) => o.user_id === (user as any)?.id)
+      }
+
+      setOrders(finalOrders)
     } catch (error) {
       console.error(error)
       toast({
