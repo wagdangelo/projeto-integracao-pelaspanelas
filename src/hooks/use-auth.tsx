@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkClockIn = useCallback(
     async (userId?: string) => {
-      const targetUserId = userId || user?.id
+      const targetUserId = userId || session?.user?.id
       if (!targetUserId) return
 
       const todayStart = new Date()
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setHasClockedInToday(!!(data && data.length > 0))
     },
-    [user?.id],
+    [session?.user?.id],
   )
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setLoading(false)
         })
     }
-  }, [session?.user?.id, session?.user?.email, checkClockIn])
+  }, [session?.user?.id, session?.user?.email])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

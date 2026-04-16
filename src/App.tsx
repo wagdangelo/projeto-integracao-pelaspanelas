@@ -100,7 +100,9 @@ const RoleGuard = ({
 
   const isAllowed = allowedRoles.some((r) => r.toLowerCase() === role)
   if (!isAllowed) {
-    if (role === 'cozinha') return <Navigate to="/ponto" replace />
+    if (role === 'cozinha') return <Navigate to="/meu-painel" replace />
+    if (['administrativo', 'adm'].includes(role)) return <Navigate to="/meu-painel" replace />
+    if (role === 'gerente') return <Navigate to="/" replace />
     return <Navigate to="/" replace />
   }
 
