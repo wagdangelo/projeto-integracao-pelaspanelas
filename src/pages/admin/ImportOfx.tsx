@@ -74,6 +74,9 @@ export default function ImportOfx() {
   const [bulkAccountId, setBulkAccountId] = useState<string>('')
   const [bulkGroup, setBulkGroup] = useState<string>('')
   const [bulkPaymentMethodId, setBulkPaymentMethodId] = useState<string>('')
+  const [bulkPayeeId, setBulkPayeeId] = useState<string>('')
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
@@ -229,6 +232,7 @@ export default function ImportOfx() {
             accountId: bulkAccountId || tx.accountId,
             group: bulkGroup || tx.group,
             paymentMethodId: bulkPaymentMethodId || tx.paymentMethodId,
+            payeeId: bulkPayeeId || tx.payeeId,
           }
         }
         return tx
@@ -239,6 +243,7 @@ export default function ImportOfx() {
     setBulkAccountId('')
     setBulkGroup('')
     setBulkPaymentMethodId('')
+    setBulkPayeeId('')
   }
 
   const uniqueGroups = useMemo(
@@ -451,13 +456,22 @@ export default function ImportOfx() {
                 </Table>
               </div>
               <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <Button
-                  variant="secondary"
-                  disabled={selectedTxIds.length === 0}
-                  onClick={() => setIsBulkEditModalOpen(true)}
-                >
-                  Lançar Selecionadas ({selectedTxIds.length})
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={selectedTxIds.length === 0}
+                    onClick={() => setIsBulkEditModalOpen(true)}
+                  >
+                    Lançar Selecionadas ({selectedTxIds.length})
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={selectedTxIds.length === 0}
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                  >
+                    Deletar selecionados ({selectedTxIds.length})
+                  </Button>
+                </div>
                 <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/50 p-3 rounded-md border border-amber-200 dark:border-amber-900/50">
                   <AlertCircle className="h-4 w-4" />
                   <p>
@@ -552,12 +566,54 @@ export default function ImportOfx() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Favorecido</Label>
+              <Select value={bulkPayeeId || undefined} onValueChange={setBulkPayeeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o favorecido..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBulkEditModalOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={handleBulkConfirm}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deletar Transações</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja deletar {selectedTxIds.length} transações? Esta ação não pode
+              ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setTransactions((prev) => prev.filter((tx) => !selectedTxIds.includes(tx._id)))
+                setSelectedTxIds([])
+                setIsDeleteDialogOpen(false)
+              }}
+            >
+              Confirmar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
