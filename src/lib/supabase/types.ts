@@ -1,14 +1,77 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      avisos: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          criado_por: string | null
+          data: string
+          descricao: string
+          funcionario_id: string
+          id: string
+          prazo: string
+          status: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          criado_por?: string | null
+          data: string
+          descricao: string
+          funcionario_id: string
+          id?: string
+          prazo?: string
+          status?: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          criado_por?: string | null
+          data?: string
+          descricao?: string
+          funcionario_id?: string
+          id?: string
+          prazo?: string
+          status?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banks: {
         Row: {
           account_digit: string | null
@@ -201,11 +264,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'entregas_lojas_user_id_fkey'
-            columns: ['user_id']
+            foreignKeyName: "entregas_lojas_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: 'funcionarios'
-            referencedColumns: ['id']
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -473,40 +536,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'pontos_funcionario_id_fkey'
-            columns: ['funcionario_id']
+            foreignKeyName: "pontos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
             isOneToOne: false
-            referencedRelation: 'funcionarios'
-            referencedColumns: ['id']
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          name: string | null
-          role: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id: string
-          name?: string | null
-          role?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          name?: string | null
-          role?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       transaction_categories: {
         Row: {
@@ -586,39 +622,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'transactions_account_id_fkey'
-            columns: ['account_id']
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
             isOneToOne: false
-            referencedRelation: 'chart_of_accounts'
-            referencedColumns: ['id']
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'transactions_bank_fkey'
-            columns: ['bank']
+            foreignKeyName: "transactions_bank_fkey"
+            columns: ["bank"]
             isOneToOne: false
-            referencedRelation: 'banks'
-            referencedColumns: ['id']
+            referencedRelation: "banks"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'transactions_payee_fkey'
-            columns: ['payee']
+            foreignKeyName: "transactions_payee_fkey"
+            columns: ["payee"]
             isOneToOne: false
-            referencedRelation: 'clients'
-            referencedColumns: ['id']
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'transactions_payment_method_fkey'
-            columns: ['payment_method']
+            foreignKeyName: "transactions_payment_method_fkey"
+            columns: ["payment_method"]
             isOneToOne: false
-            referencedRelation: 'payment_methods'
-            referencedColumns: ['id']
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'transactions_user_id_fkey'
-            columns: ['user_id']
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: 'funcionarios'
-            referencedColumns: ['id']
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -638,31 +674,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -671,23 +709,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -696,23 +734,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -721,36 +759,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -758,6 +796,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -769,6 +808,18 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: avisos
+//   id: uuid (not null, default: gen_random_uuid())
+//   tipo: text (not null)
+//   titulo: text (not null)
+//   descricao: text (not null)
+//   data: date (not null)
+//   funcionario_id: uuid (not null)
+//   status: text (not null, default: 'pendente'::text)
+//   prazo: text (not null, default: 'unica'::text)
+//   criado_por: uuid (nullable)
+//   criado_em: timestamp with time zone (not null, default: now())
+//   atualizado_em: timestamp with time zone (not null, default: now())
 // Table: banks
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -899,13 +950,6 @@ export const Constants = {
 //   status_validacao: text (nullable, default: 'dentro_tolerancia'::text)
 //   data: date (nullable)
 //   horario: text (nullable)
-// Table: profiles
-//   id: uuid (not null)
-//   email: text (not null)
-//   name: text (nullable)
-//   role: text (nullable, default: 'User'::text)
-//   created_at: timestamp with time zone (nullable, default: now())
-//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: transaction_categories
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -915,7 +959,7 @@ export const Constants = {
 // Table: transactions
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (nullable)
-//   launch_date: text (not null)
+//   launch_date: date (not null)
 //   description: text (not null)
 //   value: numeric (not null)
 //   type: text (not null)
@@ -930,6 +974,12 @@ export const Constants = {
 //   updated_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
+// Table: avisos
+//   FOREIGN KEY avisos_criado_por_fkey: FOREIGN KEY (criado_por) REFERENCES funcionarios(id) ON DELETE SET NULL
+//   FOREIGN KEY avisos_funcionario_id_fkey: FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE
+//   PRIMARY KEY avisos_pkey: PRIMARY KEY (id)
+//   CHECK avisos_status_check: CHECK ((status = ANY (ARRAY['pendente'::text, 'em_progresso'::text, 'concluida'::text])))
+//   CHECK avisos_tipo_check: CHECK ((tipo = ANY (ARRAY['informativo'::text, 'tarefa_dia'::text, 'tarefa_principal'::text])))
 // Table: banks
 //   PRIMARY KEY banks_pkey: PRIMARY KEY (id)
 // Table: chart_of_accounts
@@ -958,9 +1008,6 @@ export const Constants = {
 // Table: pontos
 //   FOREIGN KEY pontos_funcionario_id_fkey: FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE
 //   PRIMARY KEY pontos_pkey: PRIMARY KEY (id)
-// Table: profiles
-//   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
-//   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
 // Table: transaction_categories
 //   PRIMARY KEY transaction_categories_pkey: PRIMARY KEY (id)
 // Table: transactions
@@ -972,6 +1019,16 @@ export const Constants = {
 //   FOREIGN KEY transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES funcionarios(id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: avisos
+//   Policy "avisos_delete_policy" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM funcionarios   WHERE ((funcionarios.id = auth.uid()) AND (funcionarios.role = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])))))
+//   Policy "avisos_insert_policy" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM funcionarios   WHERE ((funcionarios.id = auth.uid()) AND (funcionarios.role = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])))))
+//   Policy "avisos_select_policy" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((funcionario_id = auth.uid()) OR (criado_por = auth.uid()) OR (EXISTS ( SELECT 1    FROM funcionarios   WHERE ((funcionarios.id = auth.uid()) AND (funcionarios.role = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text]))))))
+//   Policy "avisos_update_policy" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM funcionarios   WHERE ((funcionarios.id = auth.uid()) AND (funcionarios.role = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM funcionarios   WHERE ((funcionarios.id = auth.uid()) AND (funcionarios.role = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])))))
 // Table: banks
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1008,14 +1065,14 @@ export const Constants = {
 //     WITH CHECK: true
 // Table: orders
 //   Policy "Admin and Gerente can delete all, Colaborador deletes own" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//     USING: ((( SELECT funcionarios.role    FROM funcionarios   WHERE (funcionarios.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])) OR (user_id = auth.uid()))
 //   Policy "Admin and Gerente can insert all, Colaborador inserts own" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//     WITH CHECK: ((( SELECT funcionarios.role    FROM funcionarios   WHERE (funcionarios.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])) OR (user_id = auth.uid()))
 //   Policy "Admin and Gerente can see all, Colaborador sees own" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//     USING: ((( SELECT funcionarios.role    FROM funcionarios   WHERE (funcionarios.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])) OR (user_id = auth.uid()))
 //   Policy "Admin and Gerente can update all, Colaborador updates own" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
-//     WITH CHECK: ((( SELECT profiles.role    FROM profiles   WHERE (profiles.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text])) OR (user_id = auth.uid()))
+//     USING: ((( SELECT funcionarios.role    FROM funcionarios   WHERE (funcionarios.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])) OR (user_id = auth.uid()))
+//     WITH CHECK: ((( SELECT funcionarios.role    FROM funcionarios   WHERE (funcionarios.id = auth.uid())) = ANY (ARRAY['Admin'::text, 'Gerente'::text, 'admin'::text, 'gerente'::text])) OR (user_id = auth.uid()))
 // Table: payees
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1025,19 +1082,15 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: pontos
-//   Policy "authenticated_delete_pontos" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: true
-//   Policy "authenticated_insert_pontos" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: true
-//   Policy "authenticated_select_pontos" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: true
-//   Policy "authenticated_update_pontos" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: profiles
-//   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "pontos_delete_own" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (funcionario_id = auth.uid())
+//   Policy "pontos_insert_own" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (funcionario_id = auth.uid())
+//   Policy "pontos_select_own" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (funcionario_id = auth.uid())
+//   Policy "pontos_update_own" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (funcionario_id = auth.uid())
+//     WITH CHECK: (funcionario_id = auth.uid())
 // Table: transaction_categories
 //   Policy "Enable ALL for authenticated users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1067,47 +1120,47 @@ export const Constants = {
 //     ELSE
 //       v_bank_id := NEW.bank;
 //     END IF;
-//
+//   
 //     IF v_bank_id IS NOT NULL THEN
 //       SELECT initial_balance INTO v_initial FROM public.banks WHERE id = v_bank_id;
-//
-//       SELECT COALESCE(SUM(value), 0) INTO v_entradas
-//       FROM public.transactions
+//       
+//       SELECT COALESCE(SUM(value), 0) INTO v_entradas 
+//       FROM public.transactions 
 //       WHERE bank = v_bank_id AND lower(type) = 'entrada' AND lower(status) = 'liquidado';
-//
-//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas
-//       FROM public.transactions
+//       
+//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas 
+//       FROM public.transactions 
 //       WHERE bank = v_bank_id AND lower(type) IN ('saída', 'saida') AND lower(status) = 'liquidado';
-//
+//       
 //       v_new_balance := COALESCE(v_initial, 0) + v_entradas - v_saidas;
-//
+//       
 //       UPDATE public.banks SET current_balance = v_new_balance WHERE id = v_bank_id;
 //     END IF;
-//
+//   
 //     -- If it's an UPDATE and the bank changed, we also need to recalculate the old bank
 //     IF TG_OP = 'UPDATE' AND OLD.bank IS DISTINCT FROM NEW.bank AND OLD.bank IS NOT NULL THEN
 //       SELECT initial_balance INTO v_initial FROM public.banks WHERE id = OLD.bank;
-//
-//       SELECT COALESCE(SUM(value), 0) INTO v_entradas
-//       FROM public.transactions
+//       
+//       SELECT COALESCE(SUM(value), 0) INTO v_entradas 
+//       FROM public.transactions 
 //       WHERE bank = OLD.bank AND lower(type) = 'entrada' AND lower(status) = 'liquidado';
-//
-//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas
-//       FROM public.transactions
+//       
+//       SELECT COALESCE(SUM(ABS(value)), 0) INTO v_saidas 
+//       FROM public.transactions 
 //       WHERE bank = OLD.bank AND lower(type) IN ('saída', 'saida') AND lower(status) = 'liquidado';
-//
+//       
 //       v_new_balance := COALESCE(v_initial, 0) + v_entradas - v_saidas;
-//
+//       
 //       UPDATE public.banks SET current_balance = v_new_balance WHERE id = OLD.bank;
 //     END IF;
-//
+//   
 //     IF TG_OP = 'DELETE' THEN
 //       RETURN OLD;
 //     END IF;
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION rls_auto_enable()
 //   CREATE OR REPLACE FUNCTION public.rls_auto_enable()
 //    RETURNS event_trigger
@@ -1138,7 +1191,7 @@ export const Constants = {
 //     END LOOP;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION update_orders_updated_at()
 //   CREATE OR REPLACE FUNCTION public.update_orders_updated_at()
 //    RETURNS trigger
@@ -1149,7 +1202,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 
 // --- TRIGGERS ---
 // Table: orders
@@ -1162,3 +1215,4 @@ export const Constants = {
 //   CREATE UNIQUE INDEX funcionarios_email_key ON public.funcionarios USING btree (email)
 // Table: lojas
 //   CREATE UNIQUE INDEX lojas_cnpj_key ON public.lojas USING btree (cnpj)
+
