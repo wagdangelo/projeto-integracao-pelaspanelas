@@ -3,7 +3,7 @@
     "parse-ofx": 17,
     "sync-ifood-orders": 14,
     "ifoodWebhook": 16,
-    "manageUsers": 11,
+    "manageUsers": 12,
     "setFirstPassword": 10,
     "recalculate-bank-balance": 9
   }

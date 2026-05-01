@@ -154,7 +154,18 @@ Deno.serve(async (req: Request) => {
             id,
             authUpdates,
           )
-          if (updateAuthError) throw updateAuthError
+          if (updateAuthError) {
+            if (
+              updateAuthError.message.includes('User not found') ||
+              updateAuthError.status === 404
+            ) {
+              console.warn(
+                `Aviso: Usuário ${id} não encontrado no auth.users. Atualizando apenas a tabela funcionarios.`,
+              )
+            } else {
+              throw updateAuthError
+            }
+          }
         }
 
         const updateDataFunc: any = {}
