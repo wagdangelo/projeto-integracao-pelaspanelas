@@ -1268,7 +1268,7 @@ export default function Billing() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(d) => d < new Date('1900-01-01')}
+                          // disabled={(d) => d < new Date('1900-01-01')}
                           initialFocus
                           locale={ptBR}
                         />
