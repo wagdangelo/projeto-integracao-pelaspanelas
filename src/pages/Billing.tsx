@@ -1125,7 +1125,11 @@ export default function Billing() {
                 <Input
                   type="date"
                   value={format(modalDate, 'yyyy-MM-dd')}
-                  onChange={(e) => setModalDate(new Date(e.target.value))}
+                  value={
+                    modalDate
+                      ? format(new Date(modalDate), 'yyyy-MM-dd')
+                      : format(new Date(), 'yyyy-MM-dd')
+                  }
                   className=""
                 />
               </div>
