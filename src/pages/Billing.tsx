@@ -27,7 +27,6 @@ import {
   Filter,
   Edit,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -51,6 +50,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -111,7 +111,7 @@ const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
   turno: z.enum(['Dia', 'Noite'], { required_error: 'O turno é obrigatório.' }),
   loja: z.string({ required_error: 'A loja é obrigatória.' }).min(1, 'A loja é obrigatória.'),
-  quantidade: z.coerce.number().min(1, 'A quantidade deve ser maior que zero.'),
+  quantidade: z.coerce.number().min(0, 'A quantidade não pode ser negativa.'),
   faturamento: z.string().min(1, 'O faturamento é obrigatório.'),
 })
 
@@ -132,6 +132,14 @@ export default function Billing() {
 
   const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()))
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+
+  // New Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalShift, setModalShift] = useState('Dia')
+  const [modalInputs, setModalInputs] = useState<
+    Record<string, { quantidade: string; faturamento: string }>
+  >({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const nextMonth = () => setCalendarMonth(addMonths(calendarMonth, 1))
   const prevMonth = () => setCalendarMonth(subMonths(calendarMonth, 1))
@@ -216,6 +224,7 @@ export default function Billing() {
   useEffect(() => {
     loadData()
   }, [])
+
   useRealtime('entregas_lojas', () => {
     loadData()
   })
@@ -265,7 +274,6 @@ export default function Billing() {
       quantidade: r.quantidade,
       faturamento: formatBRL((r.faturamento * 100).toFixed(0)),
     })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleDelete = async () => {
@@ -277,6 +285,50 @@ export default function Billing() {
       toast.error('Erro ao excluir registro.')
     } finally {
       setDeletingRecordId(null)
+    }
+  }
+
+  const openModal = () => {
+    const initialInputs: Record<string, { quantidade: string; faturamento: string }> = {}
+    stores.forEach((s) => {
+      initialInputs[s.nome_fantasia] = { quantidade: '', faturamento: '' }
+    })
+    setModalInputs(initialInputs)
+    setModalShift('Dia')
+    setIsModalOpen(true)
+  }
+
+  const handleModalSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      const dataIso = new Date().toISOString()
+
+      const payload = stores.map((s) => {
+        const input = modalInputs[s.nome_fantasia] || { quantidade: '', faturamento: '' }
+        const quantidade = parseInt(input.quantidade || '0', 10) || 0
+        const faturamento = parseBRL(input.faturamento || '0')
+
+        return {
+          data: dataIso,
+          turno: modalShift,
+          loja: s.nome_fantasia,
+          quantidade,
+          faturamento,
+          user_id: user?.id || '',
+        }
+      })
+
+      const { error } = await supabase.from('entregas_lojas').insert(payload)
+
+      if (error) throw error
+
+      toast.success('Faturamento do dia lançado com sucesso!')
+      setIsModalOpen(false)
+      loadData()
+    } catch (error) {
+      toast.error('Erro ao salvar os registros. Tente novamente.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -453,267 +505,113 @@ export default function Billing() {
 
   return (
     <div className="space-y-6 max-w-full mx-auto pb-10">
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Faturamento</h2>
           <p className="text-muted-foreground">Registre e acompanhe as vendas por loja e turno.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
-          <Select
-            value={monthFilter}
-            onValueChange={(val) => {
-              setMonthFilter(val)
-              if (val !== 'all') setDateRange(undefined)
-            }}
+        <div className="flex flex-col gap-4 w-full xl:w-auto items-end">
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md font-semibold w-full sm:w-auto"
+            onClick={openModal}
           >
-            <SelectTrigger className="w-full sm:w-[170px]">
-              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Meses</SelectItem>
-              {availableMonths.map((m) => (
-                <SelectItem key={m} value={m}>
-                  <span className="capitalize">
-                    {format(parseISO(`${m}-01`), 'MMM yyyy', { locale: ptBR })}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            Lançar Faturamento do Dia
+          </Button>
 
-          <Select value={storeFilter} onValueChange={setStoreFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Todas as Lojas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Lojas</SelectItem>
-              {stores.map((s) => (
-                <SelectItem key={`filter-${s.id}`} value={s.nome_fantasia}>
-                  {s.nome_fantasia}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+            <Select
+              value={monthFilter}
+              onValueChange={(val) => {
+                setMonthFilter(val)
+                if (val !== 'all') setDateRange(undefined)
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Meses</SelectItem>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    <span className="capitalize">
+                      {format(parseISO(`${m}-01`), 'MMM yyyy', { locale: ptBR })}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={shiftFilter} onValueChange={setShiftFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Todos os Turnos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Turnos</SelectItem>
-              <SelectItem value="Dia">Dia</SelectItem>
-              <SelectItem value="Noite">Noite</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={storeFilter} onValueChange={setStoreFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Todas as Lojas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Lojas</SelectItem>
+                {stores.map((s) => (
+                  <SelectItem key={`filter-${s.id}`} value={s.nome_fantasia}>
+                    {s.nome_fantasia}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={'outline'}
-                className={cn(
-                  'w-full sm:w-[240px] justify-start text-left font-normal',
-                  !dateRange && 'text-muted-foreground',
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    `${format(dateRange.from, 'dd/MM/yy')} - ${format(dateRange.to, 'dd/MM/yy')}`
+            <Select value={shiftFilter} onValueChange={setShiftFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Todos os Turnos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Turnos</SelectItem>
+                <SelectItem value="Dia">Dia</SelectItem>
+                <SelectItem value="Noite">Noite</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-full sm:w-[240px] justify-start text-left font-normal',
+                    !dateRange && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      `${format(dateRange.from, 'dd/MM/yy')} - ${format(dateRange.to, 'dd/MM/yy')}`
+                    ) : (
+                      format(dateRange.from, 'dd/MM/yy')
+                    )
                   ) : (
-                    format(dateRange.from, 'dd/MM/yy')
-                  )
-                ) : (
-                  <span>Período customizado</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={(val) => {
-                  setDateRange(val)
-                  setMonthFilter('all')
-                }}
-                numberOfMonths={2}
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+                    <span>Período customizado</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={(val) => {
+                    setDateRange(val)
+                    setMonthFilter('all')
+                  }}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Store className="h-5 w-5 text-primary" />
-                {editingRecord ? 'Editar Registro' : 'Novo Registro'}
-              </span>
-              {editingRecord && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setEditingRecord(null)
-                    form.reset({
-                      data: undefined as any,
-                      turno: undefined as any,
-                      loja: undefined as any,
-                      quantidade: 0,
-                      faturamento: '',
-                    })
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </CardTitle>
-            <CardDescription>Insira os dados de faturamento diário.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="data"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Data</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={'outline'}
-                              className={cn(
-                                'w-full pl-3 text-left font-normal',
-                                !field.value && 'text-muted-foreground',
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, 'PPP', { locale: ptBR })
-                              ) : (
-                                <span>Selecione a data</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(d) => d > new Date() || d < new Date('1900-01-01')}
-                            initialFocus
-                            locale={ptBR}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="turno"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Turno</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Dia">Dia</SelectItem>
-                            <SelectItem value="Noite">Noite</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="loja"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Loja</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {stores.map((s) => (
-                              <SelectItem key={s.id} value={s.nome_fantasia}>
-                                {s.nome_fantasia}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="quantidade"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantidade</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="faturamento"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Faturamento (R$)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="R$ 0,00"
-                            value={field.value}
-                            onChange={(e) => field.onChange(formatBRL(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button type="submit" className="w-full mt-2">
-                  <Save className="mr-2 h-4 w-4" />{' '}
-                  {editingRecord ? 'Salvar Alterações' : 'Salvar Lançamento'}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
+      <div className="flex flex-col gap-6">
+        <Card>
           <CardHeader>
             <CardTitle>Últimos Lançamentos</CardTitle>
             <CardDescription>Seus registros mais recentes nos filtros atuais.</CardDescription>
@@ -1153,6 +1051,7 @@ export default function Billing() {
         </Card>
       )}
 
+      {/* Detalhamento do Dia */}
       <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
@@ -1206,6 +1105,270 @@ export default function Billing() {
               Fechar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lançar Faturamento Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Lançar Faturamento do Dia</DialogTitle>
+            <DialogDescription>
+              Preencha o faturamento e a quantidade de pedidos de todas as lojas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data</Label>
+                <Input
+                  value={format(new Date(), 'dd/MM/yyyy')}
+                  disabled
+                  className="bg-muted text-muted-foreground"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Turno</Label>
+                <Select value={modalShift} onValueChange={setModalShift}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o turno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dia">Dia</SelectItem>
+                    <SelectItem value="Noite">Noite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="rounded-md border overflow-y-auto max-h-[60vh]">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead>Loja</TableHead>
+                    <TableHead className="w-[150px]">Quantidade</TableHead>
+                    <TableHead className="w-[200px]">Valor (R$)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stores.length > 0 ? (
+                    stores.map((store) => (
+                      <TableRow key={store.id}>
+                        <TableCell className="font-medium whitespace-nowrap">
+                          {store.nome_fantasia}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={modalInputs[store.nome_fantasia]?.quantidade || ''}
+                            onChange={(e) => {
+                              setModalInputs((prev) => ({
+                                ...prev,
+                                [store.nome_fantasia]: {
+                                  ...(prev[store.nome_fantasia] || { faturamento: '' }),
+                                  quantidade: e.target.value,
+                                },
+                              }))
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            placeholder="R$ 0,00"
+                            value={modalInputs[store.nome_fantasia]?.faturamento || ''}
+                            onChange={(e) => {
+                              setModalInputs((prev) => ({
+                                ...prev,
+                                [store.nome_fantasia]: {
+                                  ...(prev[store.nome_fantasia] || { quantidade: '' }),
+                                  faturamento: formatBRL(e.target.value),
+                                },
+                              }))
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                        Nenhuma loja encontrada. Verifique o cadastro de lojas.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleModalSubmit}
+              disabled={isSubmitting || stores.length === 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isSubmitting ? 'Salvando...' : 'Lançar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar Registro Unico Modal */}
+      <Dialog
+        open={!!editingRecord}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingRecord(null)
+            form.reset({
+              data: undefined as any,
+              turno: undefined as any,
+              loja: undefined as any,
+              quantidade: 0,
+              faturamento: '',
+            })
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Registro</DialogTitle>
+            <DialogDescription>Altere os dados do faturamento.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="data"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground',
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP', { locale: ptBR })
+                            ) : (
+                              <span>Selecione a data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(d) => d > new Date() || d < new Date('1900-01-01')}
+                          initialFocus
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="turno"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Turno</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Dia">Dia</SelectItem>
+                          <SelectItem value="Noite">Noite</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="loja"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Loja</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {stores.map((s) => (
+                            <SelectItem key={s.id} value={s.nome_fantasia}>
+                              {s.nome_fantasia}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="quantidade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="faturamento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Faturamento (R$)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="R$ 0,00"
+                          value={field.value}
+                          onChange={(e) => field.onChange(formatBRL(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter className="mt-4 pt-4 border-t">
+                <Button type="submit" className="w-full">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Alterações
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
