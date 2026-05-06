@@ -1123,7 +1123,6 @@ export default function Billing() {
                 <Label>Data</Label>
                 <Input
                   value={format(new Date(), 'dd/MM/yyyy')}
-                  disabled
                   className="bg-muted text-muted-foreground"
                 />
               </div>
