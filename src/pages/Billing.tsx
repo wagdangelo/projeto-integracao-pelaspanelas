@@ -134,6 +134,7 @@ export default function Billing() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   // New Modal State
+  const [modalDate, setModalDate] = useState<Date>(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalShift, setModalShift] = useState('Dia')
   const [modalInputs, setModalInputs] = useState<
@@ -1122,9 +1123,16 @@ export default function Billing() {
               <div className="space-y-2">
                 <Label>Data</Label>
                 <Input
-                  value={format(new Date(), 'dd/MM/yyyy')}
-                  className="bg-muted text-muted-foreground"
+                  type="date"
+                  value={format(modalDate, 'yyyy-MM-dd')}
+                  onChange={(e) => setModalDate(new Date(e.target.value))}
+                  className=""
                 />
+                //<Input
+                //  value={format(new Date(), 'dd/MM/yyyy')}
+
+                //  className="bg-muted text-muted-foreground"
+                ///>
               </div>
               <div className="space-y-2">
                 <Label>Turno</Label>
