@@ -296,13 +296,14 @@ export default function Billing() {
     })
     setModalInputs(initialInputs)
     setModalShift('Dia')
+    setModalDate(new Date())
     setIsModalOpen(true)
   }
 
   const handleModalSubmit = async () => {
     setIsSubmitting(true)
     try {
-      const dataIso = new Date().toISOString()
+      const dataIso = modalDate.toISOString()
 
       const payload = stores.map((s) => {
         const input = modalInputs[s.nome_fantasia] || { quantidade: '', faturamento: '' }
@@ -1125,12 +1126,12 @@ export default function Billing() {
                 <Input
                   type="date"
                   value={format(modalDate, 'yyyy-MM-dd')}
-                  value={
-                    modalDate
-                      ? format(new Date(modalDate), 'yyyy-MM-dd')
-                      : format(new Date(), 'yyyy-MM-dd')
-                  }
-                  className=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const [year, month, day] = e.target.value.split('-').map(Number)
+                      setModalDate(new Date(year, month - 1, day, 12, 0, 0))
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
