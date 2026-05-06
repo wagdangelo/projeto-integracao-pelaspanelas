@@ -1132,7 +1132,7 @@ export default function Billing() {
                 //  value={format(new Date(), 'dd/MM/yyyy')}
 
                 //  className="bg-muted text-muted-foreground"
-                ///>
+                //>
               </div>
               <div className="space-y-2">
                 <Label>Turno</Label>
